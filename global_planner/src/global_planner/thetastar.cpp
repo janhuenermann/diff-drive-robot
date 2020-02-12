@@ -7,45 +7,47 @@ inline double euclidean_distance(Index a, Index b)
     return sqrt((dx * dx) + (dy * dy));
 }
 
-inline Eigen::Vector2d swap_axes(Eigen::Vector2d v)
+template<class T>
+inline T swap_axes(T v)
 {
-    return Eigen::Vector2d(v.y(), v.x());
+    return T(v.y(), v.x());
 }
 
 bool ThetaStarSearch::hasLineOfSight(ThetaStarSearch::Node *a, ThetaStarSearch::Node *b)
 {
-    const Eigen::Vector2d cell_offset = 0.5 * Eigen::Vector2d::Ones();
-
     Eigen::Vector2d start = a->index.cast<double>();
     Eigen::Vector2d end = b->index.cast<double>(); // center of cell
 
     Eigen::Vector2d d = (end - start);
-    Eigen::Vector2d da = d.cwiseAbs();
 
-    bool axes_swapped = da.x() < da.y();
+    bool axes_swapped = abs(d.x()) < abs(d.y());
 #define swap_if_needed(v) (axes_swapped ? swap_axes(v) : (v))
 
     Eigen::Vector2d _ls = swap_if_needed(start);
     Eigen::Vector2d _ls_f = swap_if_needed(end);
 
-    Eigen::Vector2d ls = _ls.array().round().matrix();
-    Eigen::Vector2d ls_f = _ls_f.array().round().matrix();
     Eigen::Vector2d dls = _ls_f - _ls;
+    Eigen::Vector2i ls = _ls.array().round().matrix().cast<int>();
+    Eigen::Vector2i ls_f = _ls_f.array().round().matrix().cast<int>();
 
-    bool inv_err = dls.y() < 0;
+    const bool inv_err = dls.y() < 0;
 
-    double sgn_l = copysign(1.0, dls.x());
-    double sgn_s = copysign(1.0, dls.y());
-    double phi = dls.y() / abs(dls.x());
+    const double sgn_ld = copysign(1.0, dls.x());
+    const double sgn_sd = copysign(1.0, dls.y());
+
+    const int sgn_l = static_cast<int>(sgn_ld);
+    const int sgn_s = static_cast<int>(sgn_sd);
+
+    const double phi = dls.y() / abs(dls.x());
 
     double eps_s = _ls.y() - ls.y();
     double lambda = abs(dls.y() / dls.x()) * (0.5 + (_ls.x() - ls.x()) * sgn_l) - 0.5;
     double lambda_;
-    bool first_blocked, second_blocked;
+    bool first_blocked;
 
-    Eigen::Vector2d cur;
-    Eigen::Vector2d v_sgn_l(sgn_l, 0);
-    Eigen::Vector2d v_sgn_s(0, sgn_s);
+    Eigen::Vector2i cur;
+    const Eigen::Vector2i v_sgn_l(sgn_l, 0),
+                          v_sgn_s(0, sgn_s);
 
     while (ls != ls_f)
     {
@@ -54,7 +56,7 @@ bool ThetaStarSearch::hasLineOfSight(ThetaStarSearch::Node *a, ThetaStarSearch::
 
         if (inv_err ? eps_s < -0.5 : eps_s >= 0.5) // check if error is big
         {
-            eps_s -= sgn_s;
+            eps_s -= sgn_sd;
             ls.y() += sgn_s;
 
             lambda_ = eps_s * sgn_s;
@@ -63,34 +65,31 @@ bool ThetaStarSearch::hasLineOfSight(ThetaStarSearch::Node *a, ThetaStarSearch::
             {
                 cur = ls - v_sgn_s;
 
-                if (!isTraversable(swap_if_needed(cur).cast<int>())) return false;
+                if (!isTraversable(swap_if_needed(cur))) return false;
                 if (cur == ls_f) break ;
             }
             else if (lambda_ > lambda)
             {
                 cur = ls - v_sgn_l;
 
-                if (!isTraversable(swap_if_needed(cur).cast<int>())) return false;
+                if (!isTraversable(swap_if_needed(cur))) return false;
                 if (cur == ls_f) break ;
             }
             else // corner point
             {
                 first_blocked = false;
-                second_blocked = false;
 
                 cur = ls - v_sgn_l;
-                if (!isTraversable(swap_if_needed(cur).cast<int>())) first_blocked = true;
+                if (!isTraversable(swap_if_needed(cur))) first_blocked = true;
                 if (cur == ls_f) break ;
 
                 cur = ls - v_sgn_s;
-                if (!isTraversable(swap_if_needed(cur).cast<int>())) second_blocked = true;
+                if (first_blocked && !isTraversable(swap_if_needed(cur))) return false;
                 if (cur == ls_f) break ;
-
-                if (first_blocked && second_blocked) return false;
             }
         }
 
-        if (!isTraversable(swap_if_needed(ls).cast<int>())) return false;
+        if (!isTraversable(swap_if_needed(ls))) return false;
     }
 
     return true;
