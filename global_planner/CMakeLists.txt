@@ -13,6 +13,9 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
 )
 
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -124,6 +127,7 @@ include_directories(
 add_library(${PROJECT_NAME}
   src/${PROJECT_NAME}/global_planner.cpp
   src/${PROJECT_NAME}/astar.cpp
+  src/${PROJECT_NAME}/thetastar.cpp
 )
 
 ## Add cmake target dependencies of the library
@@ -196,10 +200,10 @@ install(DIRECTORY include/${PROJECT_NAME}/
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(test_${PROJECT_NAME} test/heap.cpp test/astar.cpp test/test_global_planner.cpp)
+catkin_add_gtest(test_${PROJECT_NAME} test/heap.cpp test/astar.cpp test/thetastar.cpp test/test_global_planner.cpp)
 
 if(TARGET test_${PROJECT_NAME})
-    target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME})
+    target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})
 endif()
 
 ## Add folders to be run by python nosetests
