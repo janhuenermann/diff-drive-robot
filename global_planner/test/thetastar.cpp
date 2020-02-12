@@ -22,7 +22,7 @@ TEST(ThetaStarTest, testPathFindingSimple)
 
 TEST(ThetaStarTest, testPathFindingHard)
 {
-    int m = 10;
+    int m = 250;
     int W = 2*m+1;
 
     LazyThetaStarSearch *algo = new LazyThetaStarSearch(W, W);

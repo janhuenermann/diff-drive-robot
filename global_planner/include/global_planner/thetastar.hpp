@@ -17,6 +17,14 @@ protected:
     bool hasLineOfSight(Node *a, Node *b);
 
     virtual bool computeCost(Node *node, Node *neighbor, const Distance &d);
+
+    inline bool isTraversable(Index i, bool axes_swapped)
+    {
+        if (axes_swapped)
+            return grid_[i.x() * width_ + i.y()]->state == 0;
+        else
+            return grid_[i.y() * width_ + i.x()]->state == 0;
+    };
 };
 
 // Implemented from https://www.aaai.org/ocs/index.php/AAAI/AAAI10/paper/view/1930/1945

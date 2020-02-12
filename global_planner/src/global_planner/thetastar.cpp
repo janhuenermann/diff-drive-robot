@@ -21,29 +21,30 @@ bool ThetaStarSearch::hasLineOfSight(ThetaStarSearch::Node *a, ThetaStarSearch::
     Eigen::Vector2d d = (end - start);
 
     bool axes_swapped = abs(d.x()) < abs(d.y());
+
 #define swap_if_needed(v) (axes_swapped ? swap_axes(v) : (v))
 
     Eigen::Vector2d _ls = swap_if_needed(start);
     Eigen::Vector2d _ls_f = swap_if_needed(end);
 
     Eigen::Vector2d dls = _ls_f - _ls;
-    Eigen::Vector2i ls = _ls.array().round().matrix().cast<int>();
-    Eigen::Vector2i ls_f = _ls_f.array().round().matrix().cast<int>();
+    Eigen::Vector2i ls((int)round(_ls.x()), (int)round(_ls.y()));
+    Eigen::Vector2i ls_f((int)round(_ls_f.x()), (int)round(_ls_f.y()));
 
     const bool inv_err = dls.y() < 0;
 
     const double sgn_ld = copysign(1.0, dls.x());
     const double sgn_sd = copysign(1.0, dls.y());
 
-    const int sgn_l = static_cast<int>(sgn_ld);
-    const int sgn_s = static_cast<int>(sgn_sd);
+    const int sgn_l = (int) sgn_ld;
+    const int sgn_s = (int) sgn_sd;
 
     const double phi = dls.y() / abs(dls.x());
 
+    bool first_blocked;
     double eps_s = _ls.y() - ls.y();
     double lambda = abs(dls.y() / dls.x()) * (0.5 + (_ls.x() - ls.x()) * sgn_l) - 0.5;
     double lambda_;
-    bool first_blocked;
 
     Eigen::Vector2i cur;
     const Eigen::Vector2i v_sgn_l(sgn_l, 0),
@@ -65,14 +66,14 @@ bool ThetaStarSearch::hasLineOfSight(ThetaStarSearch::Node *a, ThetaStarSearch::
             {
                 cur = ls - v_sgn_s;
 
-                if (!isTraversable(swap_if_needed(cur))) return false;
+                if (!isTraversable(cur, axes_swapped)) return false;
                 if (cur == ls_f) break ;
             }
             else if (lambda_ > lambda)
             {
                 cur = ls - v_sgn_l;
 
-                if (!isTraversable(swap_if_needed(cur))) return false;
+                if (!isTraversable(cur, axes_swapped)) return false;
                 if (cur == ls_f) break ;
             }
             else // corner point
@@ -80,16 +81,16 @@ bool ThetaStarSearch::hasLineOfSight(ThetaStarSearch::Node *a, ThetaStarSearch::
                 first_blocked = false;
 
                 cur = ls - v_sgn_l;
-                if (!isTraversable(swap_if_needed(cur))) first_blocked = true;
+                if (!isTraversable(cur, axes_swapped)) first_blocked = true;
                 if (cur == ls_f) break ;
 
                 cur = ls - v_sgn_s;
-                if (first_blocked && !isTraversable(swap_if_needed(cur))) return false;
+                if (first_blocked && !isTraversable(cur, axes_swapped)) return false;
                 if (cur == ls_f) break ;
             }
         }
 
-        if (!isTraversable(swap_if_needed(ls))) return false;
+        if (!isTraversable(ls, axes_swapped)) return false;
     }
 
     return true;
