@@ -3,7 +3,7 @@
 
 #include <cmath>
 #include <stdexcept>
-
+#include <limits>
 
 static constexpr double ONE_OVER_LOG_PHI = 1.0 / logf((1.0 + sqrtf(5.0)) / 2.0);
 
@@ -44,14 +44,16 @@ public:
 
     /**
      * Inserts node into heap.
-     * Time: O(1)
+     * Complexity: O(1)
      */
     void insert(T key, Node *node)
     {
+        node->num_children = 0;
         node->key = key;
 
         if (min_node_ != nullptr)
         {
+            // insert to the left of min_node
             min_node_->left->right = node;
             node->left = min_node_->left;
             min_node_->left = node;
@@ -72,15 +74,15 @@ public:
         ++n_;
     }
 
-    // O(1)
     Node *top()
     {
         return min_node_;
     }
 
     /**
-     * Removes smallest element.
-     * Time: O(log n)
+     * Removes smallest element and returns it.
+     * Complexity: O(log n)
+     * @return The element with the lowest key that was removed.
      */
     Node *pop()
     {
@@ -139,9 +141,15 @@ public:
         return z;
     }
 
+    /**
+     * Decreases the key of a node in the heap.
+     * Complexity: O(1) amortized
+     * @param A node.
+     * @param Key. Must be lower than the current key of the node.
+     */
     void decreaseKey(Node *x, T k)
     {
-        if (!cmp_(x->key, k))
+        if (cmp_(x->key, k))
         {
             throw new std::invalid_argument("decreaseKey() got a larger key");
         }
@@ -162,9 +170,17 @@ public:
         }
     }
 
+    void remove(Node *x)
+    {
+        decreaseKey(x, - std::numeric_limits<T>::infinity());
+        pop();
+    }
+
     /**
      * Removes x from the child list of y.
-     * Time: O(1)
+     * Complexity: O(1)
+     * @param
+     * @param
      */
     void cut(Node *x, Node *y)
     {
@@ -191,6 +207,11 @@ public:
         x->mark = false;
     }
 
+    /**
+     * Cuts y from its parent and does the same for the parent and so on.
+     * Complexity: O(log n)
+     * @param Node to perform the cascading on.
+     */
     void cascadingCut(Node *y)
     {
         Node *z = y->parent;
@@ -231,41 +252,49 @@ public:
         }
         else
         {
-            y->left = x->child;
-            y->right = x->child->right;
-            y->right->left = y;
-            x->child->right = y;
+            x->child->left->right = y;
+            y->left = x->child->left;
+            x->child->left = y;
+            y->right = x->child;
         }
 
-        x->num_children += 1;
+        x->num_children++;
         y->mark = false;
     }
 
+    /**
+     * Complexity: O(log n)
+     */
     void consolidate()
     {
+        int root_count = 0, d;
         int arr_size = 1 + (int)floor(logf(n_) * ONE_OVER_LOG_PHI);
 
-        Node *x, *y, *next;
+        Node *x, *y, *w;
         Node **arr = new Node*[arr_size];
         std::fill_n(arr, arr_size, nullptr);
-        int num_roots = 0;
 
         x = min_node_;
 
-        if (x != nullptr)
+        do
         {
-            do
-            {
-                ++num_roots;
-                x = x->right;
-            }
-            while (x != min_node_);
+            ++root_count;
+            x = x->right;
+        }
+        while (x != min_node_);
+
+        Node **root_list = new Node*[root_count];
+        for (int j = 0; j < root_count; ++j)
+        {
+            root_list[j] = x;
+            x = x->right;
         }
 
-        while (num_roots > 0)
+        for (int j = 0; j < root_count; ++j)
         {
-            int d = x->num_children;
-            next = x->right;
+            w = root_list[j];
+            x = w;
+            d = x->num_children;
 
             while (arr[d] != nullptr)
             {
@@ -283,9 +312,9 @@ public:
             }
 
             arr[d] = x;
-            x = next;
-            --num_roots;
         }
+
+        delete [] root_list;
 
         min_node_ = nullptr;
 
@@ -300,14 +329,11 @@ public:
 
             if (min_node_ != nullptr)
             {
-                y->left->right = y->right;
-                y->right->left = y->left;
-
-                y->left = min_node_;
-                y->right = min_node_->right;
-
-                min_node_->right = y;
-                y->right->left = y;
+                // insert y to the left of min_node
+                min_node_->left->right = y;
+                y->left = min_node_->left;
+                min_node_->left = y;
+                y->right = min_node_;
 
                 if (cmp_(y->key, min_node_->key))
                 {
@@ -317,17 +343,31 @@ public:
             else
             {
                 min_node_ = y;
+                min_node_->left = y;
+                min_node_->right = y;
             }
         }
 
         delete [] arr;
     }
 
-
+    /**
+     * Removes all nodes from the heap.
+     * Complexity: O(1)
+     */
     void clear()
     {
         n_ = 0;
         min_node_ = nullptr;
+    };
+
+    /**
+     * Complexity: O(1)
+     * @return Number of elements on the heap
+     */
+    int size()
+    {
+        return n_;
     };
 
     U cmp_;

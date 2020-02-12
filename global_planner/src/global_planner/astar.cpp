@@ -1,11 +1,8 @@
 #include <global_planner/astar.hpp>
 
-#include <iostream>
 #include <stack>
 
-#define INF_D std::numeric_limits<double>::infinity()
-
-AStar::AStar(int width, int height) :
+AStarSearch::AStarSearch(int width, int height) :
     grid_(nullptr),
     width_(0),
     height_(0)
@@ -13,7 +10,7 @@ AStar::AStar(int width, int height) :
     resize(width, height);
 }
 
-void AStar::resize(int width, int height)
+void AStarSearch::resize(int width, int height)
 {
     if (grid_ != nullptr)
     {
@@ -21,7 +18,7 @@ void AStar::resize(int width, int height)
     }
 
     Distance zero_cost(0,0);
-    grid_ = new PlanningNode*[width * height];
+    grid_ = new AStarSearch::Node*[width * height];
     width_ = width;
     height_ = height;
 
@@ -29,25 +26,23 @@ void AStar::resize(int width, int height)
     {
         for (int i = 0; i < width; ++i)
         {
-            getNodeAt(i, j) = new PlanningNode(i, j);
+            getNodeAt(i, j) = new AStarSearch::Node(i, j);
         }
     }
 }
 
-inline PlanningNode*& AStar::getNodeAt(int x, int y)
+void AStarSearch::resetNode(Node *n, Index end)
 {
-    return grid_[y * width_ + x];
+    n->visited = false;
+    n->parent = nullptr;
+    n->h = Distance::octileDistance(n->index, end);
+    n->g = DISTANCE_INFINITY;
+    n->f = DISTANCE_INFINITY;
 }
 
-inline PlanningNode*& AStar::getNodeAt(Index i)
+std::vector<AStarSearch::Node *> AStarSearch::search(Index start, Index end)
 {
-    return getNodeAt(i.x, i.y);
-}
-
-std::vector<PlanningNode *> AStar::search(Index start, Index end)
-{
-    Distance inf = Distance::infinity();
-    std::vector<PlanningNode *> path;
+    std::vector<AStarSearch::Node *> path;
 
     // reset costs
 
@@ -55,35 +50,31 @@ std::vector<PlanningNode *> AStar::search(Index start, Index end)
     {
         for (int i = 0; i < width_; ++i)
         {
-            PlanningNode*& n = getNodeAt(i, j);
-            n->visited = false;
-            n->parent = nullptr;
-            n->h = Distance::octileDistance(Index(i, j), end);
-            n->g = inf;
-            n->f = inf;
+            AStarSearch::Node*& n = getNodeAt(i, j);
+            resetNode(n, end);
         }
     }
 
-    PlanningNode*& startNode = getNodeAt(start);
+    AStarSearch::Node*& startNode = getNodeAt(start);
     startNode->setGCost(Distance(0,0));
 
     queue_.clear();
     queue_.insert(startNode->f, startNode);
 
-    while (!queue_.isEmpty())
+    while (!queue_.empty())
     {
-        PlanningNode *node = queue_.pop();
+        AStarSearch::Node *node = queue_.pop();
 
         if (node->visited)
         {
             continue ;
         }
 
-        node->visited = true;
+        setVertex(node);
 
         if (node->index == end)
         {
-            std::stack<PlanningNode *> st;
+            std::stack<AStarSearch::Node *> st;
 
             while (node != nullptr)
             {
@@ -100,16 +91,18 @@ std::vector<PlanningNode *> AStar::search(Index start, Index end)
             break ;
         }
 
+        node->visited = true;
+
         findSuccessors(node);
     }
 
     return path;
 }
 
-void AStar::findSuccessors(PlanningNode *node)
+void AStarSearch::findSuccessors(AStarSearch::Node *node)
 {
-    Distance tentative_g(0,0);
-    int bx = node->index.x, by = node->index.y;
+    const Distance d_ord(1,0), d_card(0,1);
+    int bx = node->index.x(), by = node->index.y();
 
     for (int i = -1; i <= 1; ++i)
     {
@@ -121,30 +114,34 @@ void AStar::findSuccessors(PlanningNode *node)
                 continue ;
             }
 
-            PlanningNode*& suc = getNodeAt(bx+i, by+j);
 
-            if (suc->state != 0)
+            AStarSearch::Node*& neighbor = getNodeAt(bx+i, by+j);
+
+            if (!isTraversable(neighbor) || neighbor->visited)
             {
                 continue ;
             }
 
-            if (i != 0 && j != 0)
+            bool lower_cost = computeCost(node, neighbor, i != 0 && j != 0 ? d_ord : d_card);
+            if (lower_cost)
             {
-                tentative_g = node->g + Distance(1, 0);
-            }
-            else
-            {
-                tentative_g = node->g + Distance(0, 1);
-            }
-
-            if (tentative_g < suc->g)
-            {
-                suc->setGCost(tentative_g);
-                suc->parent = node;
-
-                // add to queue
-                queue_.insert(suc->f, suc);
+                queue_.upsert(neighbor->f, neighbor);
             }
         }
     }
+}
+
+bool AStarSearch::computeCost(AStarSearch::Node *node, AStarSearch::Node *neighbor, const Distance &d)
+{
+    Distance tentative_g = node->g + d;
+
+    if (tentative_g < neighbor->g)
+    {
+        neighbor->setGCost(tentative_g);
+        neighbor->parent = node;
+
+        return true;
+    }
+
+    return false;
 }
