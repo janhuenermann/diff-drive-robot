@@ -1,6 +1,10 @@
 #ifndef FIBONACCI_HEAP_H
 #define FIBONACCI_HEAP_H
 
+/**
+ * Author: Jan Huenermann <jan@huenermann.de>
+ */
+
 #include <cmath>
 #include <stdexcept>
 #include <limits>

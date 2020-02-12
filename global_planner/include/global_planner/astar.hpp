@@ -1,6 +1,10 @@
 #ifndef ASTAR_H
 #define ASTAR_H
 
+/**
+ * Author: Jan Huenermann <jan@huenermann.de>
+ */
+
 #include <vector>
 #include <iostream>
 

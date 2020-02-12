@@ -1,6 +1,10 @@
 #ifndef FIBONACCI_QUEUE_H
 #define FIBONACCI_QUEUE_H
 
+/**
+ * Author: Jan Huenermann <jan@huenermann.de>
+ */
+
 #include <global_planner/data_structures/fibonacci_heap.hpp>
 
 #include <cassert>

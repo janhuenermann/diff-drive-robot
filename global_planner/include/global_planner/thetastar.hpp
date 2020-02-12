@@ -1,6 +1,10 @@
 #ifndef THETASTAR_H
 #define THETASTAR_H
 
+/**
+ * Author: Jan Huenermann <jan@huenermann.de>
+ */
+
 #include <global_planner/astar.hpp>
 
 // Implemented from https://en.wikipedia.org/wiki/Theta*
