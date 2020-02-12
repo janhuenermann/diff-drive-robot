@@ -130,6 +130,9 @@ add_library(${PROJECT_NAME}
   src/${PROJECT_NAME}/thetastar.cpp
 )
 
+# set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-Ofast")
+
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
