@@ -67,7 +67,7 @@ public:
     {
         if (i.x() < 0 || i.x() >= width_ || i.y() < 0 || i.y() >= height_)
         {
-            return true;
+            return false;
         }
 
         return isTraversable(getNodeAt(i));
