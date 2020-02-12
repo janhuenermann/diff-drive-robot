@@ -40,4 +40,9 @@ TEST(ThetaStarTest, testPathFindingHard)
     std::vector<LazyThetaStarSearch::Node *> path = algo->search(Index(m, 0), Index(m, W-1));
 
     EXPECT_TRUE(path.size() > 0);
+
+    // for (auto &n : path)
+    // {
+    //     std::cout << n->index.x() << "," << n->index.y() << std::endl;
+    // }
 }
