@@ -14,7 +14,12 @@ struct PlanningNode
     bool visited;
     PlanningNode *parent;
 
-    PlanningNode();
+    PlanningNode(int x, int y) :
+        index(Index(x, y)),
+        g(0,0), h(0,0), f(0,0),
+        visited(false), parent(nullptr), state(0)
+    {
+    }
 
     void setGCost(Distance d)
     {
@@ -37,12 +42,12 @@ public:
     void resize(int width, int height);
     std::vector<PlanningNode *> search(Index start, Index end);
 
+    inline PlanningNode*& getNodeAt(Index i);
+    inline PlanningNode*& getNodeAt(int x, int y);
 protected:
-    PlanningNode& getNodeAt(Index i);
-    PlanningNode& getNodeAt(int x, int y);
     void findSuccessors(PlanningNode *node);
 
-    PlanningNode *grid_;
+    PlanningNode **grid_;
     FibonacciQueue<Distance, PlanningNode> queue_;
 
     int width_, height_;
