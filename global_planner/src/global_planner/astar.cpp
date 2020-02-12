@@ -102,6 +102,8 @@ std::vector<AStarSearch::Node *> AStarSearch::search(Index start, Index end)
 void AStarSearch::findSuccessors(AStarSearch::Node *node)
 {
     const Distance d_ord(1,0), d_card(0,1);
+    Distance f_old(0,0);
+    bool lower_cost;
     int bx = node->index.x(), by = node->index.y();
 
     for (int i = -1; i <= 1; ++i)
@@ -122,9 +124,16 @@ void AStarSearch::findSuccessors(AStarSearch::Node *node)
                 continue ;
             }
 
-            bool lower_cost = computeCost(node, neighbor, i != 0 && j != 0 ? d_ord : d_card);
+            f_old = neighbor->f;
+            lower_cost = computeCost(node, neighbor, i != 0 && j != 0 ? d_ord : d_card);
+
             if (lower_cost)
             {
+                if (f_old < neighbor->f) // remove because key is not smaller
+                {
+                    queue_.remove(neighbor);
+                }
+
                 queue_.upsert(neighbor->f, neighbor);
             }
         }

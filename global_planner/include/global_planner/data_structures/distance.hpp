@@ -1,6 +1,10 @@
 #ifndef DISTANCE_H
 #define DISTANCE_H
 
+/**
+ * Author: Jan Huenermann <jan@huenermann.de>
+ */
+
 #include <limits>
 #include <eigen3/Eigen/Dense>
 
@@ -24,6 +28,10 @@ public:
         sum = ordinals * M_SQRT2 + cardinals;
     }
 
+    Distance operator-() const {
+        return Distance(-ordinals, -cardinals);
+    }
+
     static Distance octileDistance(Index a, Index b)
     {
         double di = static_cast<double>(std::abs(a.y() - b.y()));
@@ -42,6 +50,13 @@ public:
 };
 
 const Distance DISTANCE_INFINITY = Distance(INF_D, INF_D);
+
+namespace std {
+    template<> class numeric_limits<Distance> {
+    public:
+       static Distance infinity() { return DISTANCE_INFINITY; };
+    };
+}
 
 inline bool operator ==(const Distance& lhs, const Distance& rhs)
 {
