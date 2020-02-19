@@ -8,6 +8,8 @@
 #include <cmath>
 #include <stdexcept>
 #include <limits>
+#include <list>
+#include <iostream>
 
 static constexpr double ONE_OVER_LOG_PHI = 1.0 / logf((1.0 + sqrtf(5.0)) / 2.0);
 
@@ -43,7 +45,7 @@ public:
         int num_children;
     };
 
-    FibonacciHeap() : n_(0), min_node_(nullptr), cmp_(U())
+    FibonacciHeap() : n_(0), min_node_(nullptr), cmp_(U()), _arr(32)
     {};
 
     /**
@@ -101,28 +103,22 @@ public:
 
             if (x != nullptr)
             {
-                children = new Node*[z->num_children];
-                next = x;
-
-                for (int j = 0; j < z->num_children; ++j)
+                do
                 {
-                    children[j] = next;
-                    next = next->right;
-                }
+                    next = x->right;
 
-
-                for (int j = 0; j < z->num_children; ++j)
-                {
-                    x = children[j];
-                    // insert x to the left of min_node_
+                    // insert to left of min_node
                     min_node_->left->right = x;
                     x->left = min_node_->left;
                     min_node_->left = x;
                     x->right = min_node_;
                     x->parent = nullptr;
-                }
 
-                delete [] children;
+                    x = next;
+                }
+                while (x != z->child);
+
+                z->child = nullptr;
             }
 
             // remove z from the list
@@ -271,38 +267,38 @@ public:
      */
     void consolidate()
     {
-        int root_count = 0, d;
+        int d;
         int arr_size = 1 + (int)floor(logf(n_) * ONE_OVER_LOG_PHI);
+        
+        Node *x, *y;
+        std::list<Node *> root_nodes;
 
-        Node *x, *y, *w;
-        Node **arr = new Node*[arr_size];
-        std::fill_n(arr, arr_size, nullptr);
+        // increase size if needed
+        if (_arr.size() < arr_size)
+        {
+            _arr.resize(std::max(static_cast<int>(2 * _arr.size()), arr_size), nullptr);
+        }
+
+        // reset existing values
+        std::fill_n(_arr.begin(), arr_size, nullptr);
 
         x = min_node_;
 
         do
         {
-            ++root_count;
+            root_nodes.push_back(x);
             x = x->right;
         }
         while (x != min_node_);
 
-        Node **root_list = new Node*[root_count];
-        for (int j = 0; j < root_count; ++j)
+        for (auto it = root_nodes.begin(); it != root_nodes.end(); ++it)
         {
-            root_list[j] = x;
-            x = x->right;
-        }
-
-        for (int j = 0; j < root_count; ++j)
-        {
-            w = root_list[j];
-            x = w;
+            x = *it;
             d = x->num_children;
 
-            while (arr[d] != nullptr)
+            while (_arr[d] != nullptr)
             {
-                y = arr[d];
+                y = _arr[d];
 
                 if (cmp_(y->key, x->key))
                 {
@@ -311,20 +307,18 @@ public:
 
                 link(y, x);
 
-                arr[d] = nullptr;
+                _arr[d] = nullptr;
                 ++d;
             }
 
-            arr[d] = x;
+            _arr[d] = x;
         }
-
-        delete [] root_list;
 
         min_node_ = nullptr;
 
         for (int j = 0; j < arr_size; ++j)
         {
-            y = arr[j];
+            y = _arr[j];
 
             if (y == nullptr)
             {
@@ -351,8 +345,6 @@ public:
                 min_node_->right = y;
             }
         }
-
-        delete [] arr;
     }
 
     /**
@@ -377,6 +369,9 @@ public:
     U cmp_;
     Node *min_node_;
     int n_;
+
+private:
+    std::vector<Node *> _arr;
 
 };
 

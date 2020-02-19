@@ -6,13 +6,89 @@
  */
 
 #include <limits>
-#include <eigen3/Eigen/Dense>
 
-#define INF_D std::numeric_limits<double>::infinity()
+#define infd std::numeric_limits<double>::infinity()
 
+template<class T>
+struct Vector2
+{
 
-typedef Eigen::Vector2i Index;
-typedef Eigen::Vector2d Point;
+    Vector2(T x, T y) : x(x), y(y)
+    {}
+
+    Vector2() : Vector2(0, 0)
+    {}
+
+    T x;
+    T y;
+
+    template<class V>
+    inline Vector2<V> cast()
+    {
+        return Vector2<V>(static_cast<V>(x), static_cast<V>(y));
+    }
+
+    template<class V>
+    inline V norm()
+    {
+        return std::sqrt(static_cast<V>(x*x + y*y));
+    }
+
+    template<class V>
+    inline Vector2<V> round()
+    {
+        return Vector2<V>(static_cast<V>(std::round(x)), static_cast<V>(std::round(y)));
+    }
+
+};
+
+template<class T>
+inline Vector2<T> operator +(const Vector2<T>& lhs, const Vector2<T>& rhs)
+{
+    return Vector2<T>(lhs.x + rhs.x, lhs.y + rhs.y);
+}
+
+template<class T>
+inline Vector2<T> operator -(const Vector2<T>& lhs, const Vector2<T>& rhs)
+{
+    return Vector2<T>(lhs.x - rhs.x, lhs.y - rhs.y);
+}
+
+template<class T>
+inline Vector2<T> operator *(const Vector2<T>& lhs, const Vector2<T>& rhs)
+{
+    return Vector2<T>(lhs.x * rhs.x, lhs.y * rhs.y);
+}
+
+template<class T>
+inline Vector2<T> operator /(const Vector2<T>& lhs, const Vector2<T>& rhs)
+{
+    return Vector2<T>(lhs.x / rhs.x, lhs.y / rhs.y);
+}
+
+template<class T>
+inline bool operator ==(const Vector2<T>& lhs, const Vector2<T>& rhs)
+{
+    return lhs.x == rhs.x && lhs.y == rhs.y;
+}
+
+template<class T>
+inline bool operator !=(const Vector2<T>& lhs, const Vector2<T>& rhs)
+{
+    return lhs.x != rhs.x || lhs.y != rhs.y;
+}
+
+template<class T>
+std::ostream& operator<<(std::ostream &strm, const Vector2<T> &a) {
+  return strm << "Vector2(" << a.x << ", " << a.y << ")";
+}
+
+typedef Vector2<int> Index2;
+typedef Vector2<double> Point2;
+
+/**
+ * DISTANCE
+ */
 
 struct Distance
 {
@@ -32,10 +108,10 @@ public:
         return Distance(-ordinals, -cardinals);
     }
 
-    static Distance octileDistance(Index a, Index b)
+    static Distance octileDistance(Index2 a, Index2 b)
     {
-        double di = static_cast<double>(std::abs(a.y() - b.y()));
-        double dj = static_cast<double>(std::abs(a.x() - b.x()));
+        double di = static_cast<double>(std::abs(a.y - b.y));
+        double dj = static_cast<double>(std::abs(a.x - b.x));
 
         if (dj > di)
         {
@@ -49,12 +125,10 @@ public:
 
 };
 
-const Distance DISTANCE_INFINITY = Distance(INF_D, INF_D);
-
 namespace std {
     template<> class numeric_limits<Distance> {
     public:
-       static Distance infinity() { return DISTANCE_INFINITY; };
+       static Distance infinity() { return Distance(infd, infd); };
     };
 }
 

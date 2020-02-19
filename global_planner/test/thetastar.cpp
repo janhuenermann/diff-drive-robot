@@ -11,18 +11,18 @@ TEST(ThetaStarTest, testPathFindingSimple)
         algo->getNodeAt(k, (H-1) / 2)->state = 1;
     }
 
-    std::vector<LazyThetaStarSearch::Node *> path = algo->search(Index(0, 0), Index(0, H-1));
+    std::vector<LazyThetaStarSearch::Node *> path = algo->search(Index2(0, 0), Index2(0, H-1));
 
-    EXPECT_EQ(path[0]->index, Index(0, 0));
-    EXPECT_EQ(path[1]->index, Index(W-2, (H-1)/2-1));
-    EXPECT_EQ(path[2]->index, Index(W-1, (H-1)/2));
-    EXPECT_EQ(path[3]->index, Index(W-2, (H-1)/2+1));
-    EXPECT_EQ(path[4]->index, Index(0, H-1));
+    EXPECT_EQ(path[0]->index, Index2(0, 0));
+    EXPECT_EQ(path[1]->index, Index2(W-2, (H-1)/2-1));
+    EXPECT_EQ(path[2]->index, Index2(W-1, (H-1)/2));
+    EXPECT_EQ(path[3]->index, Index2(W-2, (H-1)/2+1));
+    EXPECT_EQ(path[4]->index, Index2(0, H-1));
 }
 
 TEST(ThetaStarTest, testPathFindingHard)
 {
-    int m = 250;
+    int m = 500;
     int W = 2*m+1;
 
     LazyThetaStarSearch *algo = new LazyThetaStarSearch(W, W);
@@ -37,7 +37,7 @@ TEST(ThetaStarTest, testPathFindingHard)
         }
     }
 
-    std::vector<LazyThetaStarSearch::Node *> path = algo->search(Index(m, 0), Index(m, W-1));
+    std::vector<LazyThetaStarSearch::Node *> path = algo->search(Index2(m, 0), Index2(m, W-1));
 
     EXPECT_TRUE(path.size() > 0);
 

@@ -1,102 +1,98 @@
 #include <global_planner/thetastar.hpp>
 
-inline double euclidean_distance(Index a, Index b)
+inline double euclidean_distance(Index2 a, Index2 b)
 {
-    double dx = (double)(a.x() - b.x());
-    double dy = (double)(a.y() - b.y());
-    return sqrt((dx * dx) + (dy * dy));
+    return (a - b).norm<double>();
 }
 
 template<class T>
-inline T swap_axes(T v)
+inline T swapped(bool should_swap, T v)
 {
-    return T(v.y(), v.x());
+    if (should_swap)
+        return T(v.y, v.x);
+    else
+        return v;
 }
 
 bool ThetaStarSearch::hasLineOfSight(ThetaStarSearch::Node *a, ThetaStarSearch::Node *b)
 {
-    Eigen::Vector2d start = a->index.cast<double>();
-    Eigen::Vector2d end = b->index.cast<double>(); // center of cell
+    const Point2 start = a->index.cast<double>();
+    const Point2 end = b->index.cast<double>(); // center of cell
 
-    Eigen::Vector2d d = (end - start);
+    const Point2 d = (end - start);
+    const bool should_swap = std::abs(d.x) < std::abs(d.y);
 
-    bool axes_swapped = abs(d.x()) < abs(d.y());
+    Point2 _ls = swapped(should_swap, start);
+    Point2 _ls_f = swapped(should_swap, end);
 
-#define swap_if_needed(v) (axes_swapped ? swap_axes(v) : (v))
+    Point2 dls = _ls_f - _ls;
+    Index2 ls = _ls.round<int>();
+    Index2 ls_f = _ls_f.round<int>();
 
-    Eigen::Vector2d _ls = swap_if_needed(start);
-    Eigen::Vector2d _ls_f = swap_if_needed(end);
+    const bool inv_err = dls.y < 0;
 
-    Eigen::Vector2d dls = _ls_f - _ls;
-    Eigen::Vector2i ls((int)round(_ls.x()), (int)round(_ls.y()));
-    Eigen::Vector2i ls_f((int)round(_ls_f.x()), (int)round(_ls_f.y()));
+    const double sgn_ld = copysign(1.0, dls.x);
+    const double sgn_sd = copysign(1.0, dls.y);
 
-    const bool inv_err = dls.y() < 0;
+    const int sgn_l = (int)sgn_ld;
+    const int sgn_s = (int)sgn_sd;
 
-    const double sgn_ld = copysign(1.0, dls.x());
-    const double sgn_sd = copysign(1.0, dls.y());
-
-    const int sgn_l = (int) sgn_ld;
-    const int sgn_s = (int) sgn_sd;
-
-    const double phi = dls.y() / abs(dls.x());
+    const double phi = dls.y / std::abs(dls.x);
 
     bool first_blocked;
-    double eps_s = _ls.y() - ls.y();
-    double lambda = abs(dls.y() / dls.x()) * (0.5 + (_ls.x() - ls.x()) * sgn_l) - 0.5;
+    double eps_s = _ls.y - ls.y;
+    double lambda = std::abs(dls.y / dls.x) * (0.5 + (_ls.x - ls.x) * sgn_l) - 0.5;
     double lambda_;
 
-    Eigen::Vector2i cur;
-    const Eigen::Vector2i v_sgn_l(sgn_l, 0),
-                          v_sgn_s(0, sgn_s);
+    Index2 cur;
 
     while (ls != ls_f)
     {
-        ls.x() += sgn_l;
+        ls.x += sgn_l;
         eps_s += phi;
 
         if (inv_err ? eps_s < -0.5 : eps_s >= 0.5) // check if error is big
         {
             eps_s -= sgn_sd;
-            ls.y() += sgn_s;
+            ls.y += sgn_s;
 
             lambda_ = eps_s * sgn_s;
 
             if (lambda_ < lambda)
             {
-                cur = ls - v_sgn_s;
+                cur = Index2(ls.x, ls.y - sgn_s);
 
-                if (!isTraversable(cur, axes_swapped)) return false;
+                if (!isTraversable(cur, should_swap)) return false;
                 if (cur == ls_f) break ;
             }
             else if (lambda_ > lambda)
             {
-                cur = ls - v_sgn_l;
+                cur = Index2(ls.x - sgn_l, ls.y);
 
-                if (!isTraversable(cur, axes_swapped)) return false;
+                if (!isTraversable(cur, should_swap)) return false;
                 if (cur == ls_f) break ;
             }
             else // corner point
             {
                 first_blocked = false;
 
-                cur = ls - v_sgn_l;
-                if (!isTraversable(cur, axes_swapped)) first_blocked = true;
+                cur = Index2(ls.x - sgn_l, ls.y);
+                if (!isTraversable(cur, should_swap)) first_blocked = true;
                 if (cur == ls_f) break ;
 
-                cur = ls - v_sgn_s;
-                if (first_blocked && !isTraversable(cur, axes_swapped)) return false;
+                cur = Index2(ls.x, ls.y - sgn_s);
+                if (first_blocked && !isTraversable(cur, should_swap)) return false;
                 if (cur == ls_f) break ;
             }
         }
 
-        if (!isTraversable(ls, axes_swapped)) return false;
+        if (!isTraversable(ls, should_swap)) return false;
     }
 
     return true;
 }
 
-void ThetaStarSearch::resetNode(Node *n, Index end)
+void ThetaStarSearch::resetNode(Node *n, Index2 end)
 {
     AStarSearch::resetNode(n, end);
     n->h = Distance(0, euclidean_distance(n->index, end));
@@ -106,7 +102,7 @@ bool ThetaStarSearch::computeCost(ThetaStarSearch::Node *node, ThetaStarSearch::
 {
     if (node->parent != nullptr && hasLineOfSight(node->parent, neighbor))
     {
-        Distance tentative_g = node->parent->g + euclidean_distance(node->parent->index, neighbor->index);;
+        Distance tentative_g = node->parent->g + euclidean_distance(node->parent->index, neighbor->index);
 
         if (tentative_g < neighbor->g)
         {
@@ -132,7 +128,6 @@ bool ThetaStarSearch::computeCost(ThetaStarSearch::Node *node, ThetaStarSearch::
     return false;
 }
 
-
 bool LazyThetaStarSearch::computeCost(ThetaStarSearch::Node *node, ThetaStarSearch::Node *neighbor, const Distance &d)
 {
     if (node->parent == nullptr)
@@ -144,8 +139,7 @@ bool LazyThetaStarSearch::computeCost(ThetaStarSearch::Node *node, ThetaStarSear
     }
 
     // assume there is a line-of-sight
-
-    Distance tentative_g = node->parent->g + euclidean_distance(node->parent->index, neighbor->index);;
+    Distance tentative_g = node->parent->g + euclidean_distance(node->parent->index, neighbor->index);
 
     if (tentative_g < neighbor->g)
     {
@@ -169,9 +163,9 @@ void LazyThetaStarSearch::setVertex(LazyThetaStarSearch::Node *node)
     if (!hasLineOfSight(node->parent, node))
     {
         const Distance d_ord(1,0), d_card(0,1);
-        const int bx = node->index.x(), by = node->index.y();
+        const int bx = node->index.x, by = node->index.y;
 
-        Distance min_g = DISTANCE_INFINITY;
+        Distance min_g = std::numeric_limits<Distance>::infinity();
         LazyThetaStarSearch::Node *best = nullptr;
 
         // Iterate over neighbors

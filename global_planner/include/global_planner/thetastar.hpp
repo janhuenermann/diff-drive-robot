@@ -6,6 +6,7 @@
  */
 
 #include <global_planner/astar.hpp>
+#include <global_planner/data_structures/point.hpp>
 
 // Implemented from https://en.wikipedia.org/wiki/Theta*
 class ThetaStarSearch : public AStarSearch
@@ -13,17 +14,17 @@ class ThetaStarSearch : public AStarSearch
 public:
     ThetaStarSearch(int w, int h) : AStarSearch(w, h) {}
 protected:
-    void resetNode(Node *n, Index end);
+    void resetNode(Node *n, Index2 end);
     bool hasLineOfSight(Node *a, Node *b);
 
     virtual bool computeCost(Node *node, Node *neighbor, const Distance &d);
 
-    inline bool isTraversable(Index i, bool axes_swapped)
+    inline bool isTraversable(Index2 i, bool axes_swapped)
     {
         if (axes_swapped)
-            return grid_[i.x() * width_ + i.y()]->state == 0;
+            return grid_[i.x * width_ + i.y]->state == 0;
         else
-            return grid_[i.y() * width_ + i.x()]->state == 0;
+            return grid_[i.y * width_ + i.x]->state == 0;
     };
 };
 

@@ -9,14 +9,14 @@
 #include <iostream>
 
 #include <global_planner/data_structures/fibonacci_queue.hpp>
-#include <global_planner/data_structures/distance.hpp>
+#include <global_planner/data_structures/point.hpp>
 
 class AStarSearch
 {
 public:
     struct Node : public FibonacciQueue<Distance>::Element
     {
-        Index index;
+        Index2 index;
         int state; // 0 - free, 1 - occupied, 2 - inflated
         Distance g, h, f;
         bool visited;
@@ -24,7 +24,7 @@ public:
 
         Node(int x, int y) :
             Element(),
-            index(Index(x, y)),
+            index(Index2(x, y)),
             g(0,0), h(0,0), f(0,0),
             visited(false), parent(nullptr), state(0)
         {
@@ -46,11 +46,11 @@ public:
     AStarSearch(int width, int height);
 
     void resize(int width, int height);
-    std::vector<Node *> search(Index start, Index end);
+    std::vector<Node *> search(Index2 start, Index2 end);
 
-    inline Node*& getNodeAt(Index i)
+    inline Node*& getNodeAt(Index2 i)
     {
-        return getNodeAt(i.x(), i.y());
+        return getNodeAt(i.x, i.y);
     }
 
     inline Node*& getNodeAt(int x, int y)
@@ -63,9 +63,9 @@ public:
         return n->state == 0;
     }
 
-    inline bool isTraversable(Index i)
+    inline bool isTraversable(Index2 i)
     {
-        if (i.x() < 0 || i.x() >= width_ || i.y() < 0 || i.y() >= height_)
+        if (i.x < 0 || i.x >= width_ || i.y < 0 || i.y >= height_)
         {
             return false;
         }
@@ -73,7 +73,7 @@ public:
         return isTraversable(getNodeAt(i));
     }
 protected:
-    virtual void resetNode(Node *node, Index goal);
+    virtual void resetNode(Node *node, Index2 goal);
     virtual void findSuccessors(Node *node);
     virtual void setVertex(Node *node) {};
 

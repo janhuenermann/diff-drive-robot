@@ -31,16 +31,16 @@ void AStarSearch::resize(int width, int height)
     }
 }
 
-void AStarSearch::resetNode(Node *n, Index end)
+void AStarSearch::resetNode(Node *n, Index2 end)
 {
     n->visited = false;
     n->parent = nullptr;
     n->h = Distance::octileDistance(n->index, end);
-    n->g = DISTANCE_INFINITY;
-    n->f = DISTANCE_INFINITY;
+    n->g = std::numeric_limits<Distance>::infinity();
+    n->f = std::numeric_limits<Distance>::infinity();
 }
 
-std::vector<AStarSearch::Node *> AStarSearch::search(Index start, Index end)
+std::vector<AStarSearch::Node *> AStarSearch::search(Index2 start, Index2 end)
 {
     std::vector<AStarSearch::Node *> path;
 
@@ -104,7 +104,7 @@ void AStarSearch::findSuccessors(AStarSearch::Node *node)
     const Distance d_ord(1,0), d_card(0,1);
     Distance f_old(0,0);
     bool lower_cost;
-    int bx = node->index.x(), by = node->index.y();
+    int bx = node->index.x, by = node->index.y;
 
     for (int i = -1; i <= 1; ++i)
     {
