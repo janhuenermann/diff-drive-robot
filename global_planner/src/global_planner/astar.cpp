@@ -17,7 +17,6 @@ void AStarSearch::resize(int width, int height)
         delete [] grid_;
     }
 
-    Distance zero_cost(0,0);
     grid_ = new AStarSearch::Node*[width * height];
     width_ = width;
     height_ = height;

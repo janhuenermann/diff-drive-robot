@@ -72,6 +72,17 @@ public:
 
         return isTraversable(getNodeAt(i));
     }
+
+    inline int getWidth()
+    {
+        return width_;
+    }
+
+    inline int getHeight()
+    {
+        return height_;
+    }
+
 protected:
     virtual void resetNode(Node *node, Index2 goal);
     virtual void findSuccessors(Node *node);
