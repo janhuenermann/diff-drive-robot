@@ -10,7 +10,6 @@ OdometryMM::OdometryMM(geometry_msgs::Pose2D pos_init,float wl_init ,float wr_in
 
     wheel_sub=nh->subscribe("joint_states",1,&OdometryMM::callback_wheels,this);
     pos_pub = nh->advertise<geometry_msgs::Pose2D>("/robot_pose", 5);
-    ROS_INFO("Slam inited");
 }
 
 void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
