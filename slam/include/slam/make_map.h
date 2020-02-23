@@ -7,11 +7,13 @@
 #include <set>
 #include "math.h"
 
+// Constants used to fill occupancy grid
 const int UNKNOWN = -1;
 const int FREE = 0;
 const int OCCUPIED = 1;
 const int INFLATED = 2;
 
+// struct to hold integer indices
 struct MapIdx{
   MapIdx(int x_pos,int y_pos);
   bool operator<(const MapIdx& rhs)const;
@@ -21,23 +23,25 @@ struct MapIdx{
 
 class LidarMap{
 private:
-  ros::Subscriber scan_sub;       // subscribe to wheel positions
+  ros::Subscriber scan_sub;       // subscribe to wheel angle and robot position
   ros::Subscriber pos_sub;
   ros::Publisher grid_pub;        // map publisher
-  float max_range = 3.5;
-  float inflation_radius;
+  float max_range = 3.5;          // maximal range of LIDAR
+  float inflation_radius;         // radius added to obstacle to avoid robot touching them
+  // log odds parameters
   float l_occ;
   float l_free;
   float L_THRESH = 5;
+  // Map info
   geometry_msgs::Pose2D min_pos;
   float cell_size;
   int width;
   int height;
   geometry_msgs::Pose2D robot_pos;
-  nav_msgs::OccupancyGrid occ_grid;
+  nav_msgs::OccupancyGrid occ_grid;   // published map
   std::vector<std::vector<float>> log_odds;
-  std::vector<MapIdx> mask_inflation;
-  std::vector<std::vector<std::set<MapIdx>>> inflation;
+  std::vector<MapIdx> mask_inflation; // holds relative positions of to be inflated cells
+  std::vector<std::vector<std::set<MapIdx>>> inflation;    // holds inflation info
 
   geometry_msgs::Pose2D inverseSensorModel(geometry_msgs::Pose2D pos,float rng,float deg);
 public:

@@ -1,24 +1,43 @@
 #include <slam/make_map.h>
 
 MapIdx::MapIdx(int x_pos,int y_pos){
+  /* Constructor for Map Indices
+  Parameters:
+      position (two integers)   The two indizes in map.
+  */
   x = x_pos;
   y = y_pos;
 }
 
 bool MapIdx::operator<(const MapIdx& rhs) const{
+  /* Comparator for Map Indices (needed to insert into set)
+  Parameters:
+      rhs (MapIdx)   The value to compare to
+  */
+  // Sort by x first and then by y
   if(x<rhs.x) return true;
   if(x==rhs.x && y<rhs.y) return true;
   return false;
 }
 
 LidarMap::LidarMap(ros::NodeHandle *nh,geometry_msgs::Pose2D mi_pos,geometry_msgs::Pose2D max_pos,float c_size,float inf_radius):
+  /* Constructor for map and lidar
+  Parameters:
+      *nh               Node handle required to make subscriptions
+      mi_pos            Minimal position captured on map
+      max_pos           Maximal position captured on map
+      c_size            Size of a cell
+      inf_radius        Radius added to obsticles, such that robot can pass
+  */
   inflation_radius(inf_radius),
   min_pos(mi_pos),
   cell_size(c_size)
   {
+    // Init subscribers and publishers
     scan_sub=nh->subscribe("scan",10,&LidarMap::callback_scan,this);
     pos_sub = nh->subscribe("robot_pose",1,&LidarMap::callback_pos,this);
     grid_pub = nh->advertise<nav_msgs::OccupancyGrid>("/map", 5);
+    // Initialize occupancy grid metadata
     occ_grid.info.resolution = cell_size;
     occ_grid.info.origin.position.x = min_pos.x;
     occ_grid.info.origin.position.y = min_pos.y;
@@ -26,26 +45,36 @@ LidarMap::LidarMap(ros::NodeHandle *nh,geometry_msgs::Pose2D mi_pos,geometry_msg
     height = ceil((max_pos.y-min_pos.y)/cell_size);
     occ_grid.info.width = width;
     occ_grid.info.height = height;
+    occ_grid.data.resize(width*height);
+    std::fill(occ_grid.data.begin(),occ_grid.data.end(),UNKNOWN);
+    // Generate relative coordinates to inflate
     mask_inflation = gen_mask();
+    // Init log odds
     l_occ = log(0.65/0.35);
     l_free = log(0.35/0.65);
     log_odds.resize(width, std::vector<float>(height));
     std::fill(log_odds.begin(), log_odds.end(), std::vector<float>(height, 0));
+    // Stores all occupied cells causing an inflation
     inflation.resize(width, std::vector<std::set<MapIdx>>(height));
-    occ_grid.data.resize(width*height);
-    std::fill(occ_grid.data.begin(),occ_grid.data.end(),-1);
 }
 
 void LidarMap::callback_scan(const sensor_msgs::LaserScan& msg){
+  /* Gets information from new LIDAR scan
+  Parameters:
+      msg       Output of laser scan
+  */
  std::vector<float> ranges = msg.ranges;
+ // Scan is 360 degrees
  for(int i=0;i<360;i++){
    geometry_msgs::Pose2D end_pos;
+   // Obsticle found
    if(ranges[i]!=INFINITY){
      end_pos = inverseSensorModel(robot_pos,ranges[i],i);
      MapIdx end_idx = pos2idx(end_pos);
      if(idx_in_map(end_idx)){
        update_at_idx(end_idx,true);
      }
+    // No obsticle found
    }else{
      end_pos = inverseSensorModel(robot_pos,max_range,i);
      MapIdx end_idx = pos2idx(end_pos);
@@ -53,6 +82,7 @@ void LidarMap::callback_scan(const sensor_msgs::LaserScan& msg){
        update_at_idx(end_idx,false);
      }
    }
+   // find free cells between robot position and scan endpoint
    std::vector<MapIdx> los_idx = line_of_sight(end_pos);
    for(int i=0;i<los_idx.size();i++){
      if(idx_in_map(los_idx[i])){
@@ -60,14 +90,25 @@ void LidarMap::callback_scan(const sensor_msgs::LaserScan& msg){
      }
    }
  }
+ // publish the new grid
  publish_grid();
 }
 
 void LidarMap::callback_pos(const geometry_msgs::Pose2D& msg){
+  /* Saves the new robot position
+  Parameters:
+      msg       Estimated position
+  */
   robot_pos = msg;
 }
 
 geometry_msgs::Pose2D LidarMap::idx2pos(MapIdx idx){
+  /*Converts map indices to world coordinates
+  Parameters:
+      pos     Index in map
+  Returns:
+      Position of the cell in world coordinates
+  */
   geometry_msgs::Pose2D res;
   res.x = idx.x * cell_size + min_pos.x;
   res.y = idx.y * cell_size + min_pos.y;
@@ -75,6 +116,12 @@ geometry_msgs::Pose2D LidarMap::idx2pos(MapIdx idx){
 }
 
 MapIdx LidarMap::pos2idx(geometry_msgs::Pose2D pos){
+  /*Converts World coordinates to map indices
+  Parameters:
+      pos (World coordinate in form (x,y))
+  Returns:
+      Index in map
+  */
   int x = round((pos.x - min_pos.x)/cell_size);
   int y = round((pos.y - min_pos.y)/cell_size);
   MapIdx res(x,y);
@@ -82,6 +129,12 @@ MapIdx LidarMap::pos2idx(geometry_msgs::Pose2D pos){
 }
 
 geometry_msgs::Pose2D LidarMap::pos2idx_no_round(geometry_msgs::Pose2D pos){
+  /*Converts World coordinates to map indices but does not round for integer indices
+  Parameters:
+      pos (World coordinate in form (x,y))
+  Returns:
+      Index in map
+  */
   geometry_msgs::Pose2D res;
   res.x = (pos.x - min_pos.x)/cell_size;
   res.y = (pos.y - min_pos.y)/cell_size;
@@ -89,6 +142,14 @@ geometry_msgs::Pose2D LidarMap::pos2idx_no_round(geometry_msgs::Pose2D pos){
 }
 
 geometry_msgs::Pose2D LidarMap::inverseSensorModel(geometry_msgs::Pose2D pos,float rng,float deg){
+    /* Takes output of lidar and gives world position of the end of the laser ray
+    Parameters:
+        pos       Position of robot in world coordinates
+        rng       Distance to obstacle, or max range if no obstacle
+        deg       Angle of laser measurement
+    Returns:
+        Position of the end point of measurement in world coordinates
+    */
     float rad = (M_PI/180)*deg;
     geometry_msgs::Pose2D res;
     res.x = pos.x + rng*cos(pos.theta+rad);
@@ -97,11 +158,16 @@ geometry_msgs::Pose2D LidarMap::inverseSensorModel(geometry_msgs::Pose2D pos,flo
 }
 
 std::vector<MapIdx> LidarMap::gen_mask(){
+  /* Generates mask of relative map indices, that have to be considered for inflation
+  Returns:
+      List of Map indices that have to be considered
+  */
   std::vector<MapIdx> res;
   MapIdx curr(0,0);
   grid_pub.publish(occ_grid);
   int x_max = round(inflation_radius/cell_size); // max idx
   float r_idx = inflation_radius/cell_size;
+  // Only look at first quadrant and then use symmetry for the rest, while not addiding twice
   for(int x=0;x<x_max;x++){
     for(int y=0;y<x_max;y++){
       if(x==0 && y==0) continue;
@@ -131,10 +197,18 @@ std::vector<MapIdx> LidarMap::gen_mask(){
 }
 
 void LidarMap::publish_grid(){
+  /* Publishes the calculated Occupancy grid
+  */
   grid_pub.publish(occ_grid);
 }
 
 std::vector<MapIdx> LidarMap::line_of_sight(geometry_msgs::Pose2D end_pos){
+  /* Uses general line algorithm to compute the indices between position of robot and an end position
+  Parameters:
+      end_pos the end position of the line of sight
+  Returns:
+      vector of map indices, in line of sight between robot and end_pos
+  */
   std::vector<MapIdx> res;
   MapIdx start_idx_rounded = pos2idx(robot_pos);
   MapIdx end_idx_rounded = pos2idx(end_pos);
@@ -177,7 +251,7 @@ std::vector<MapIdx> LidarMap::line_of_sight(geometry_msgs::Pose2D end_pos){
   //error
   float es = s_s-s_sr;
   float l = abs(ds/dl)*(0.5+(l_s-l_sr)*sign_dl)-0.5;
-
+  // calculate the indices in line of sight and add to vector
   while((l_sr!=l_er)||(s_sr!=s_er)){
     l_sr += sign_dl;
     es += phi;
@@ -226,6 +300,12 @@ std::vector<MapIdx> LidarMap::line_of_sight(geometry_msgs::Pose2D end_pos){
 }
 
 bool LidarMap::idx_in_map(MapIdx idx){
+  /* Checks if an index is inside the bounds of the map
+  Parameters:
+      idx       Map index to be checked
+  Returns:
+      true if index is in bounds, false otherwise
+  */
   if(idx.x<occ_grid.info.width && idx.y<occ_grid.info.height){
     return true;
   }
@@ -233,23 +313,35 @@ bool LidarMap::idx_in_map(MapIdx idx){
 }
 
 void LidarMap::update_at_idx(MapIdx idx, bool occupied){
+  /* Update log odds and occupancy grid with new found information
+  Parameters:
+      idx           index to update
+      occupied      true if the cell is beliefed to be occupide, false else
+  */
   if(occupied){
     log_odds[idx.x][idx.y] += l_occ;
     if(log_odds[idx.x][idx.y]>L_THRESH){
       occ_grid.data[idx.x*width+idx.y] = OCCUPIED;
-      add_inflation(idx,occupied);
+      add_inflation(idx,true);
     }
   }else{
     log_odds[idx.x][idx.y] += l_free;
     if(log_odds[idx.x][idx.y]<-L_THRESH){
-      occ_grid.data[idx.x*width+idx.y] = FREE;
-      add_inflation(idx,occupied);
+      add_inflation(idx,false);
+      if(occ_grid.data[idx.x*width+idx.y] != INFLATED){
+        occ_grid.data[idx.x*width+idx.y] = FREE;
+      }
     }
   }
 }
 
 // occupied is the new occupation status
 void LidarMap::add_inflation(MapIdx center,bool occupied){
+  /* Marks cells to be inflated, when a change happens at center
+  Parameters:
+      center        The changed cell
+      occupied      true if the cell is newly occupied, false if cell is newly free
+  */
   MapIdx idx(0,0);
   for(int i=0;i<mask_inflation.size();i++){
     idx.x = center.x+mask_inflation[i].x;
