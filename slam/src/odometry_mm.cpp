@@ -37,13 +37,13 @@ void OdometryMM::callback_imu(const sensor_msgs::Imu& msg){
   pos_imu.theta = compass;
   pos_imu.x += dx;
   pos_imu.y += dy;
-  ROS_INFO("x_imu:%f",pos_imu.x);
+  /*ROS_INFO("x_imu:%f",pos_imu.x);
   ROS_INFO("x_od:%f",pos_od.x);
   ROS_INFO("y_imu:%f",pos_imu.y);
   ROS_INFO("y_od:%f",pos_od.y);
   ROS_INFO("t_imu:%f",pos_imu.theta);
   ROS_INFO("t_od:%f",pos_od.theta);
-  ROS_INFO("-----");
+  ROS_INFO("-----");*/
   v += a*dt;
   t_imu += dt;
 }

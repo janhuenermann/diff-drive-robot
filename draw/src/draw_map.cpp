@@ -21,12 +21,13 @@ public:
         sub_path_ = nh_.subscribe<nav_msgs::Path>("/navigation/path", 1, &DrawMapNode::navigationCallback, this);
 
         ROS_INFO("Booting draw map node");
-        namedWindow("Map", WINDOW_AUTOSIZE);
+        namedWindow("Map", WINDOW_NORMAL);
     }
 
     void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
     {
         map_ = *msg;
+        ROS_INFO("Received map");
 
         if (frame_.cols != map_.info.width || frame_.rows != map_.info.height)
         {
@@ -40,6 +41,8 @@ public:
 
     void robotPoseCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
     {
+      ROS_INFO("Received pose");
+
         robot_pose_ = *msg;
         received_pose_ = true;
         draw();
@@ -47,6 +50,8 @@ public:
 
     void goalCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
     {
+      ROS_INFO("Received goal");
+
         nav_goal_ = *msg;
         received_nav_goal_ = true;
         draw();
@@ -54,6 +59,8 @@ public:
 
     void navigationCallback(const nav_msgs::Path::ConstPtr& msg)
     {
+      ROS_INFO("Received path");
+
         planned_path_ = *msg;
         received_path_ = true;
         draw();
@@ -67,7 +74,7 @@ public:
         const int w = map_.info.width;
         const int h = map_.info.height;
         const float res = map_.info.resolution;
-        
+
         for (int y = 0; y < h; ++y)
         {
             for (int x = 0; x < w; ++x)
@@ -93,18 +100,6 @@ public:
                 }
             }
         }
-
-        if (received_pose_)
-        {
-            setColor(robot_pose_, 255, 0, 0);
-        }
-        
-        if (received_nav_goal_)
-        {
-            setColor(nav_goal_, 0, 255, 0);
-        }
-        
-
         if (received_path_)
         {
             assert(planned_path_.poses.size() >= 2); // start and end point
@@ -115,8 +110,19 @@ public:
                 setColor(pose_stamped.pose.position, 0, 0, 255);
             }
         }
-        
+        if (received_pose_)
+        {
+            setColor(robot_pose_, 255, 0, 0);
+        }
+
+        if (received_nav_goal_)
+        {
+            setColor(nav_goal_, 0, 255, 0);
+        }
+
+        ROS_INFO("Showing map");
         imshow("Map", frame_);
+        waitKey(1);
     }
 
     inline void setColor(int x, int y, uint8_t r, uint8_t g, uint8_t b)

@@ -22,6 +22,7 @@ int main(int argc, char **argv){
   float cell_size = 0.05;
   float inflation_rad = 0.2;
   LidarMap map(&n,min_pos,max_pos,cell_size,inflation_rad);
+  ROS_INFO("Booted slam node");
   //Let objects take care of received messages
   ros::spin();
   return 0;
