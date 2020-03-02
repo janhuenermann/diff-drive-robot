@@ -105,8 +105,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-#  LIBRARIES global_planner
-#  CATKIN_DEPENDS geometry_msgs nav_msgs std_msgs
+   LIBRARIES global_planner
+   CATKIN_DEPENDS geometry_msgs nav_msgs std_msgs
 #  DEPENDS system_lib
 )
 

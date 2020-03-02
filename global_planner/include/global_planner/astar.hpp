@@ -9,7 +9,7 @@
 #include <iostream>
 
 #include <global_planner/data_structures/fibonacci_queue.hpp>
-#include <global_planner/data_structures/math.hpp>
+#include <global_planner/math.hpp>
 
 
 namespace AStar

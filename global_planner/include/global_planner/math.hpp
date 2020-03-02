@@ -5,9 +5,10 @@
  * Author: Jan Huenermann <jan@huenermann.de>
  */
 
+#include <iostream>
 #include <limits>
 #include <execinfo.h>
-
+#include <cmath>
 
 #define infd std::numeric_limits<double>::infinity()
 
