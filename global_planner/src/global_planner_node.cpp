@@ -12,7 +12,11 @@ class PlannerNode
 {
 public:
 
-    PlannerNode() : nh_(), algorithm_(new T(0, 0))
+    PlannerNode() :
+        nh_(), algorithm_(new T(0, 0)),
+        received_map_(false),
+        received_robot_pose_(false),
+        received_nav_goal_(false)
     {
         sub_occ_grid_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &PlannerNode::mapCallback, this);
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &PlannerNode::robotPoseCallback, this);
@@ -24,6 +28,9 @@ public:
 
     void findPath()
     {
+        if (!received_map_ || !received_nav_goal_ || !received_robot_pose_)
+            return ;
+
         Index2 start = (robot_position_ / map_resolution_).cast<int>();
         Index2 target = (goal_ / map_resolution_).cast<int>();
 
@@ -84,6 +91,7 @@ public:
     {
         last_update_stamp_ = msg->header.stamp;
         updateMap(msg);
+        received_map_ = true;
         findPath();
     }
 
@@ -92,6 +100,7 @@ public:
         last_update_stamp_ = ros::Time::now();
         robot_position_ = Point2(msg->x, msg->y);
         robot_angle_ = msg->theta;
+        received_robot_pose_ = true;
         findPath();
     }
 
@@ -99,6 +108,7 @@ public:
     {
         last_update_stamp_ = ros::Time::now();
         goal_ = Point2(msg->x, msg->y);
+        received_nav_goal_ = true;
         findPath();
     }
 
@@ -106,6 +116,10 @@ protected:
 
     double map_resolution_;
     T* algorithm_;
+
+    bool received_map_;
+    bool received_robot_pose_;
+    bool received_nav_goal_;
 
     Point2 robot_position_;
     double robot_angle_;
