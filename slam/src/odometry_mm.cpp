@@ -11,10 +11,12 @@ OdometryMM::OdometryMM(geometry_msgs::Pose2D pos_init,float wl_init ,float wr_in
   */
   pos(pos_init),
   wl(wl_init),
-  wr(wr_init)
+  wr(wr_init),
+  v(0),
+  a(0),
+  w(0)
   {
-    t_od = ros::Time::now().toSec();
-    t_imu = ros::Time::now().toSec();
+    t = ros::Time::now().toSec();
     // initialize subscribers and publishers
     wheel_sub=nh->subscribe("joint_states",1,&OdometryMM::callback_wheels,this);
     imu_sub = nh->subscribe("imu",1,&OdometryMM::callback_imu,this);
@@ -26,26 +28,9 @@ void OdometryMM::callback_imu(const sensor_msgs::Imu& msg){
   Parameters:
       msg       Output of Imu
   */
-  float dt = ros::Time::now().toSec()-t_imu;
-  float compass = tf::getYaw(msg.orientation);  //extract info from quaterion
-  float w = msg.angular_velocity.z;
-  float dphi = w*dt;
-  float a = msg.linear_acceleration.x;          //use s = 1/2*a*t*t+v*t
-  float s = (1/2)*a*dt*dt+v*dt;
-  float dx = cos(pos.theta)*s;
-  float dy = sin(pos.theta)*s;
-  pos_imu.theta = compass;
-  pos_imu.x += dx;
-  pos_imu.y += dy;
-  /*ROS_INFO("x_imu:%f",pos_imu.x);
-  ROS_INFO("x_od:%f",pos_od.x);
-  ROS_INFO("y_imu:%f",pos_imu.y);
-  ROS_INFO("y_od:%f",pos_od.y);
-  ROS_INFO("t_imu:%f",pos_imu.theta);
-  ROS_INFO("t_od:%f",pos_od.theta);
-  ROS_INFO("-----");*/
-  v += a*dt;
-  t_imu += dt;
+  compass = tf::getYaw(msg.orientation);  //extract info from quaterion
+  w = msg.angular_velocity.z;
+  a = msg.linear_acceleration.x;
 }
 
 void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
@@ -53,46 +38,52 @@ void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
   Parameters:
       msg       Output of wheel encoder
   */
-  float dt = ros::Time::now().toSec()-t_od;
+  float dt = ros::Time::now().toSec()-t;
   float wheel_l = msg.position[1];
   float wheel_r = msg.position[0];
   float dwl = wheel_l - wl;
   float dwr = wheel_r - wr;
-  float w = (2*WR/(2*L*dt))*(dwr-dwl);
-
+  float omega = (2*WR/(2*L*dt))*(dwr-dwl);
+  float theta_od = pos.theta;
   // MM for straight line
-  if(std::abs(w) < 1e-10){
-    float vt = ((2*WR)/(4*dt))*(dwl+dwr);
-    pos_od.x += vt*dt*cos(pos.theta);
-    pos_od.y += vt*dt*sin(pos.theta); //theta unchanged, since straight
+  if(std::abs(omega) < 3e-4){
+    float v_od = ((2*WR)/(4*dt))*(dwl+dwr);
+    float v_imu = v+a*dt;
+    // fuse sensor readings
+    v = WEIGHT_ODOMETRY*v_od+WEIGHT_IMU*v_imu;
+    pos.x += v*dt*cos(pos.theta);
+    pos.y += v*dt*sin(pos.theta);
   }else{
     // MM for curves
     float rt = (L/2)*(dwl+dwr)/(dwr-dwl);    //turn radius
-    float dphi = ((2*WR)/(2*L))*(dwr-dwl);
-    pos_od.x += - rt*sin(pos.theta)+rt*sin(pos.theta+dphi);
-    pos_od.y += rt*cos(pos.theta)-rt*cos(pos.theta+dphi);
-    pos_od.theta += dphi;
+    float dphi_od = ((2*WR)/(2*L))*(dwr-dwl);
+    float dphi_imu = w*dt;
+    float dphi_av = WEIGHT_ODOMETRY*dphi_od+WEIGHT_IMU*dphi_imu;
+    pos.x += -rt*sin(pos.theta)+rt*sin(pos.theta+dphi_av);
+    pos.y += rt*cos(pos.theta)-rt*cos(pos.theta+dphi_av);
+    theta_od += dphi_od;
+    //pos.theta += dphi_av;
   }
-  // normalize to [-pi,pi]
-  if(pos_od.theta>M_PI) pos_od.theta-=2*M_PI;
-  if(pos_od.theta<-M_PI) pos_od.theta+=2*M_PI;
   wl = wheel_l;
   wr = wheel_r;
-  t_od += dt;
-  if(pos_od.theta>2 && pos_imu.theta<-2){
-    pos_od.theta-=2*M_PI;
+  t += dt;
+
+  // normalize angle to -pi,pi
+  if(theta_od>M_PI) theta_od-=2*M_PI;
+  if(theta_od<-M_PI) theta_od+=2*M_PI;
+
+  // one angle close to pi and the other close to -pi
+  if(theta_od>2 && compass<-2){
+    theta_od-=2*M_PI;
   }
-  if(pos_od.theta<-2 && pos_imu.theta>2){
-    pos_od.theta+=2*M_PI;
+  if(theta_od<-2 && compass>2){
+    theta_od+=2*M_PI;
   }
-  /*pos.theta = WEIGHT_ODOMETRY*pos_od.theta+WEIGHT_IMU*pos_imu.theta;
-  pos.x = WEIGHT_ODOMETRY*pos_od.x+WEIGHT_IMU*pos_imu.x;
-  pos.y = WEIGHT_ODOMETRY*pos_od.y+WEIGHT_IMU*pos_imu.y;*/
-  pos.theta = pos_od.theta;
-  pos.x = pos_od.x;
-  pos.y = pos_od.y;
-  // publish the new position
+  pos.theta = (1-WEIGHT_COMPASS)*theta_od+WEIGHT_COMPASS*compass;
+
+  //publish
   publish_pos();
+
 }
 
 void OdometryMM::publish_pos(){

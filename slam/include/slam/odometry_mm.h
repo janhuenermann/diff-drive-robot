@@ -8,11 +8,10 @@
 
 class OdometryMM{
 private:
-  const int WEIGHT_IMU = 0.2f;
-  const int WEIGHT_ODOMETRY = 0.8f;
+  const float WEIGHT_IMU = 0.05f;       // weights for weighted sensor fusion
+  const float WEIGHT_ODOMETRY = 0.95f;
+  const float WEIGHT_COMPASS = 0.3f;
   geometry_msgs::Pose2D pos;    // position in world frame
-  geometry_msgs::Pose2D pos_imu;    // position in world frame
-  geometry_msgs::Pose2D pos_od;    // position in world frame
   ros::Subscriber wheel_sub;    // subscribe to wheel positions
   ros::Subscriber imu_sub;    // subscribe to imu
   ros::Publisher pos_pub;       // position publisher
@@ -20,9 +19,11 @@ private:
   float wr;                     // angle of right wheel in rad
   float L = 0.16;               // Axle axle track
   float WR = 0.066/2;           // Wheel radius
-  double t_od;                      // current ros time in seconds updated for odometry
-  double t_imu;                     // current ros time in seconds updated for imu
+  double t;                      // current ros time in seconds
+  double a;                         // current acceleration
   double v;                         // current speed
+  double compass;                 // angle output of compas
+  double w ;                      // angular velocity
 
 public:
   OdometryMM(geometry_msgs::Pose2D pos_init,float wl_init ,float wr_init, ros::NodeHandle *nh);

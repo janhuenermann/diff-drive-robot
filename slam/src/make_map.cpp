@@ -321,17 +321,17 @@ void LidarMap::update_at_idx(MapIdx idx, bool occupied){
       occupied      true if the cell is beliefed to be occupide, false else
   */
   if(occupied){
-    log_odds[idx.x][idx.y] += l_occ;
+    log_odds[idx.x][idx.y] = std::min(l_occ+log_odds[idx.x][idx.y],L_max);
     if(log_odds[idx.x][idx.y]>L_THRESH){
-      occ_grid.data[idx.x*width+idx.y] = OCCUPIED;
+      occ_grid.data[idx.y*width+idx.x] = OCCUPIED;
       add_inflation(idx,true);
     }
   }else{
-    log_odds[idx.x][idx.y] += l_free;
+    log_odds[idx.x][idx.y] = std::max(l_free+log_odds[idx.x][idx.y],-L_max);
     if(log_odds[idx.x][idx.y]<-L_THRESH){
       add_inflation(idx,false);
-      if(occ_grid.data[idx.x*width+idx.y] != INFLATED){
-        occ_grid.data[idx.x*width+idx.y] = FREE;
+      if(occ_grid.data[idx.y*width+idx.x] != INFLATED){
+        occ_grid.data[idx.y*width+idx.x] = FREE;
       }
     }
   }
@@ -351,13 +351,13 @@ void LidarMap::add_inflation(MapIdx center,bool occupied){
     if(idx_in_map(idx)){
       if(occupied){
         inflation[idx.x][idx.y].insert(center);
-        if(occ_grid.data[width*idx.x+idx.y]==FREE){
-          occ_grid.data[width*idx.x+idx.y] = INFLATED;
+        if(occ_grid.data[width*idx.y+idx.x]==FREE){
+          occ_grid.data[width*idx.y+idx.x] = INFLATED;
         }
       }else{
         inflation[idx.x][idx.y].erase(center);
-        if(occ_grid.data[width*idx.x+idx.y]==INFLATED && inflation[idx.x][idx.y].empty()){
-          occ_grid.data[width*idx.x+idx.y] = FREE;
+        if(occ_grid.data[width*idx.y+idx.x]==INFLATED && inflation[idx.x][idx.y].empty()){
+          occ_grid.data[width*idx.y+idx.x] = FREE;
         }
       }
     }
