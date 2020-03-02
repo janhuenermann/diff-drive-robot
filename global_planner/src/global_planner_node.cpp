@@ -18,6 +18,8 @@ public:
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &PlannerNode::robotPoseCallback, this);
         sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/goal", 1, &PlannerNode::goalCallback, this);
         pub_path_ = nh_.advertise<nav_msgs::Path>("/navigation/path", 10);
+
+        ROS_INFO("Booted planner node");
     }
 
     void findPath()
@@ -25,7 +27,9 @@ public:
         Index2 start = (robot_position_ / map_resolution_).cast<int>();
         Index2 target = (goal_ / map_resolution_).cast<int>();
 
+        ROS_DEBUG("Starting path planning");
         path_ = algorithm_->search(start, target);
+        ROS_DEBUG("Finished path planning");
 
         publishPath();
     }
@@ -47,6 +51,8 @@ public:
         }
 
         pub_path_.publish(msg);
+
+        ROS_INFO("Published path with %d way-points!", (int)path_.size());
     }
 
     void updateMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
