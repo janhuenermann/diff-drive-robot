@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 #include <global_planner/thetastar.hpp>
+// #include <opencv2/highgui/highgui.hpp>
+
+// using namespace cv;
 
 
 TEST(ThetaStarTest, testPathFindingSimple)

@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   std_msgs
 )
+find_package(OpenCV REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -119,13 +120,21 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
+
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
   src/${PROJECT_NAME}/global_planner.cpp
   src/${PROJECT_NAME}/astar.cpp
   src/${PROJECT_NAME}/thetastar.cpp
+  src/${PROJECT_NAME}/anya/math.cpp
+  src/${PROJECT_NAME}/anya/grid.cpp
+  src/${PROJECT_NAME}/anya/node.cpp
+  src/${PROJECT_NAME}/anya/projection.cpp
+  src/${PROJECT_NAME}/anya/expander.cpp
+  src/${PROJECT_NAME}/anya/search.cpp
 )
 
 # set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-Ofast")
@@ -202,10 +211,10 @@ install(DIRECTORY include/${PROJECT_NAME}/
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(test_${PROJECT_NAME} test/heap.cpp test/astar.cpp test/thetastar.cpp test/test_global_planner.cpp)
+catkin_add_gtest(test_${PROJECT_NAME} test/heap.cpp test/astar.cpp test/thetastar.cpp test/anya.cpp test/test_global_planner.cpp)
 
 if(TARGET test_${PROJECT_NAME})
-    target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})
+    target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBS})
 endif()
 
 ## Add folders to be run by python nosetests
