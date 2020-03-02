@@ -19,16 +19,20 @@ namespace ThetaStar
     public:
         Search(int w, int h) : AStar::Search(w, h) {}
     protected:
-        virtual void resetNode(Node *n, Index2 end);
         virtual bool hasLineOfSight(Node *a, Node *b);
         virtual bool updateVertex(Node *node, Node *neighbor);
 
         inline bool isTraversableSwapped(Index2 i, bool axes_swapped)
         {
             if (axes_swapped)
-                return grid_[i.x * width_ + i.y]->state == 0;
+                return grid_[i.x * width_ + i.y]->traversable;
             else
-                return grid_[i.y * width_ + i.x]->state == 0;
+                return grid_[i.y * width_ + i.x]->traversable;
+        };
+
+        virtual bool shouldPrune(Node *a, Node *b, Node *c)
+        {
+            return hasLineOfSight(a, c);
         };
     };
 

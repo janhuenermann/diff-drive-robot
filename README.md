@@ -26,4 +26,5 @@ root directory of the workspace.
 ### Topics
 - `/robot_pose`: geometry_msgs/Pose2D
 - `/map`: nav_msgs/OccupancyGrid
+- `/navigation/goal`: geometry_msgs/Pose2D
 - `/navigation/path`: nav_msgs/Path, global coordinates

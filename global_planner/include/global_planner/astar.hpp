@@ -40,9 +40,9 @@ namespace AStar
             return Cost(-g, -h);
         }
 
-        virtual void reset(Index2 cur, Index2 goal)
+        virtual void reset(Index2 pos, Index2 target)
         {
-            h = (cur - goal).norm<double>(); // Distance::octileDistance(cur, goal);
+            h = (pos - target).norm<double>(); // Distance::octileDistance(cur, goal);
             g = std::numeric_limits<double>::infinity();
             f = std::numeric_limits<double>::infinity();
         }
@@ -51,7 +51,9 @@ namespace AStar
     struct Node : public FibonacciQueue<Cost>::Element
     {
         Index2 index;
-        int state; // 0 - free, 1 - occupied, 2 - inflated
+
+        bool traversable;
+
         Cost cost;
         bool visited;
         Node *parent;
@@ -60,8 +62,15 @@ namespace AStar
             Element(),
             index(Index2(x, y)),
             cost(),
-            visited(false), parent(nullptr), state(0)
+            visited(false), parent(nullptr), traversable(true)
         {
+        }
+
+        void reset(Index2 target)
+        {
+            visited = false;
+            parent = nullptr;
+            cost.reset(index, target);
         }
     };
 
@@ -71,7 +80,7 @@ namespace AStar
         Search(int width, int height);
 
         void resize(int width, int height);
-        std::vector<Index2> search(Index2 start, Index2 end);
+        std::vector<Index2> search(Index2 start, Index2 target);
 
         inline int getWidth()
         {
@@ -97,7 +106,7 @@ namespace AStar
 
         inline bool isTraversable(Node *n)
         {
-            return n->state == 0;
+            return n->traversable;
         }
 
         inline bool isTraversable(Index2 i)
@@ -110,9 +119,9 @@ namespace AStar
             return isTraversable(getNodeAt(i));
         }
 
-        virtual void resetNode(Node *node, Index2 goal);
         virtual void findSuccessors(Node *node);
         virtual bool setVertex(Node *node) { return false; };
+        virtual bool shouldPrune(Node *a, Node *b, Node *c) { return false; };
 
         /**
          * Updates the vertex. 
