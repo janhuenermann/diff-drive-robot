@@ -32,14 +32,7 @@ void Search::resize(int width, int height)
     }
 }
 
-void Search::resetNode(Node *n, Index2 end)
-{
-    n->visited = false;
-    n->parent = nullptr;
-    n->cost.reset(n->index, end);
-}
-
-std::vector<Index2> Search::search(Index2 start, Index2 end)
+std::vector<Index2> Search::search(Index2 start, Index2 target)
 {
     std::vector<Index2> path;
 
@@ -49,8 +42,7 @@ std::vector<Index2> Search::search(Index2 start, Index2 end)
     {
         for (int i = 0; i < width_; ++i)
         {
-            Node*& n = getNodeAt(i, j);
-            resetNode(n, end);
+            getNodeAt(i, j)->reset(target);
         }
     }
 
@@ -75,19 +67,25 @@ std::vector<Index2> Search::search(Index2 start, Index2 end)
             continue ;
         }
 
-        if (node->index == end)
+        if (node->index == target)
         {
-            std::stack<Index2> st;
+            std::stack<Node *> st;
+            Node *last = nullptr;
 
             while (node != nullptr)
             {
-                st.push(node->index);
+                if (last == nullptr || node->parent == nullptr || !shouldPrune(node->parent, node, last))
+                {
+                    st.push(node);
+                    last = node;
+                }
+                
                 node = node->parent;
             }
 
             while (!st.empty())
             {
-                path.push_back(st.top());
+                path.push_back(st.top()->index);
                 st.pop();
             }
 

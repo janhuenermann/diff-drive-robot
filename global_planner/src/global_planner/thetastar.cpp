@@ -112,12 +112,6 @@ bool Search::hasLineOfSight(Node *a, Node *b)
     return true;
 }
 
-void Search::resetNode(Node *n, Index2 end)
-{
-    AStar::Search::resetNode(n, end);
-    n->cost.h = (n->index - end).norm<double>();
-}
-
 bool Search::updateVertex(Node *node, Node *neighbor)
 {
     if (node->parent != nullptr && hasLineOfSight(node->parent, neighbor))

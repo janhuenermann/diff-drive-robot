@@ -73,9 +73,21 @@ inline Vector2<T> operator *(const Vector2<T>& lhs, const Vector2<T>& rhs)
 }
 
 template<class T>
+inline Vector2<T> operator *(const Vector2<T>& lhs, const T& rhs)
+{
+    return Vector2<T>(lhs.x * rhs, lhs.y * rhs);
+}
+
+template<class T>
 inline Vector2<T> operator /(const Vector2<T>& lhs, const Vector2<T>& rhs)
 {
     return Vector2<T>(lhs.x / rhs.x, lhs.y / rhs.y);
+}
+
+template<class T>
+inline Vector2<T> operator /(const Vector2<T>& lhs, const T& rhs)
+{
+    return Vector2<T>(lhs.x / rhs, lhs.y / rhs);
 }
 
 template<class T>
