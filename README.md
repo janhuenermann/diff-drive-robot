@@ -22,3 +22,8 @@ root directory of the workspace.
 - [ ] Project global turning points to local space
 - [ ] Implement Potential Field to guide the robot while avoiding obstacles
 - [ ] Move continuously from start to end
+
+### Topics
+- `/robot_pose`: geometry_msgs/Pose2D
+- `/map`: nav_msgs/OccupancyGrid
+- `/navigation/path`: nav_msgs/Path, global coordinates
