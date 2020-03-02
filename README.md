@@ -5,6 +5,11 @@ NUS, EE4308
 Clone this repo inside of the folder `catkin_ws/src`. After that, run `catkin_make` in the
 root directory of the workspace.
 
+Launch the robot:
+```
+roslaunch bringup robot_bringup.launch
+```
+
 ### TODO
 #### Part 1
 - [ ] Implement the Inverse Sensor Model
