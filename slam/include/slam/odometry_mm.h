@@ -5,16 +5,16 @@
 #include "ros/time.h"
 #include <tf/transform_broadcaster.h>
 
-#define WEIGHT_COMPAS 0.5;
-#define WEIGHT_IMU 0.2;
-#define WEIGHT_ODOMETRY 0.8;
 
 class OdometryMM{
 private:
+  const int WEIGHT_IMU = 0.2f;
+  const int WEIGHT_ODOMETRY = 0.8f;
   geometry_msgs::Pose2D pos;    // position in world frame
   geometry_msgs::Pose2D pos_imu;    // position in world frame
   geometry_msgs::Pose2D pos_od;    // position in world frame
   ros::Subscriber wheel_sub;    // subscribe to wheel positions
+  ros::Subscriber imu_sub;    // subscribe to imu
   ros::Publisher pos_pub;       // position publisher
   float wl;                     // angle of left wheel in rad
   float wr;                     // angle of right wheel in rad

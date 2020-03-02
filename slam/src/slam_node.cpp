@@ -19,7 +19,7 @@ int main(int argc, char **argv){
   min_pos.y = -3;
   max_pos.x = 5;
   max_pos.y = 4;
-  float cell_size = 0.1;
+  float cell_size = 0.05;
   float inflation_rad = 0.2;
   LidarMap map(&n,min_pos,max_pos,cell_size,inflation_rad);
   //Let objects take care of received messages
