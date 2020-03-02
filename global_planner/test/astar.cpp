@@ -4,25 +4,25 @@
 TEST(AStarTest, testPathFindingSimple)
 {
     int W = 21;
-    AStarSearch *algo = new AStarSearch(W, 3);
+    AStar::Search *algo = new AStar::Search(W, 3);
 
     for (int k = 0; k < W-1; ++k)
     {
         algo->getNodeAt(k, 1)->state = 1;
     }
 
-    std::vector<AStarSearch::Node *> path = algo->search(Index2(0, 0), Index2(0, 2));
+    std::vector<Index2> path = algo->search(Index2(0, 0), Index2(0, 2));
 
     for (int k = 0; k < W-1; ++k)
     {
-        EXPECT_EQ(path[k]->index, Index2(k,0));
+        EXPECT_EQ(path[k], Index2(k,0));
     }
 
-    EXPECT_EQ(path[W-1]->index, Index2(W-1, 1));
+    EXPECT_EQ(path[W-1], Index2(W-1, 1));
 
     for (int k = 0; k < W-1; ++k)
     {
-        EXPECT_EQ(path[W+k]->index, Index2(W-2-k, 2));
+        EXPECT_EQ(path[W+k], Index2(W-2-k, 2));
     }
 }
 
@@ -31,7 +31,7 @@ TEST(AStarTest, testPathFindingHard)
     int m = 10;
     int W = 2*m+1;
 
-    AStarSearch *algo = new AStarSearch(W, W);
+    AStar::Search *algo = new AStar::Search(W, W);
 
     for (int k = 1; k < W-1; k += 2)
     {
@@ -43,7 +43,7 @@ TEST(AStarTest, testPathFindingHard)
         }
     }
 
-    std::vector<AStarSearch::Node *> path = algo->search(Index2(m, 0), Index2(m, W-1));
+    std::vector<Index2> path = algo->search(Index2(m, 0), Index2(m, W-1));
 
     EXPECT_TRUE(path.size() > 0);
 }

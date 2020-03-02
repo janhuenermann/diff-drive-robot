@@ -63,16 +63,30 @@ public:
         };
 
         /**
-         * Inserts if not in queue, decrease if in queue.
+         * Inserts if not in queue, change key if in queue.
          * Complexity: O(1) amortized
          * @param Key
          * @param Element
          */
-        void upsert(K key, V *val)
+        void upsert(K key, V *val, bool increase = false)
         {
             if (has(val))
             {
-                decreaseKey(val, key);
+                auto el = static_cast<Element *>(val);
+
+                if (el->heap_node->key == key)
+                {
+                    return ;
+                }
+                else if (increase && el->heap_node->key < key)
+                {
+                    remove(val);
+                    insert(key, val);
+                }
+                else
+                {
+                    decreaseKey(val, key);
+                }
             }
             else
             {
@@ -88,7 +102,8 @@ public:
          */
         inline bool has(V *val)
         {
-            return val->heap_node != nullptr;
+            auto el = static_cast<Element *>(val);
+            return el->heap_node != nullptr;
         }
 
         /**

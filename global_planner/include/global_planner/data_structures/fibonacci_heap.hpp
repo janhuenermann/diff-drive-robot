@@ -10,6 +10,8 @@
 #include <limits>
 #include <list>
 #include <iostream>
+#include <stdexcept>
+#include <vector>
 
 static constexpr double ONE_OVER_LOG_PHI = 1.0 / logf((1.0 + sqrtf(5.0)) / 2.0);
 
@@ -149,9 +151,14 @@ public:
      */
     void decreaseKey(Node *x, T k)
     {
+        if (x->key == k)
+        {
+            return ;
+        }
+
         if (cmp_(x->key, k))
         {
-            throw new std::invalid_argument("decreaseKey() got a larger key");
+            throw std::invalid_argument("decreaseKey() got a larger key");
         }
 
         x->key = k;

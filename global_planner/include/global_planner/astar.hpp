@@ -9,98 +9,157 @@
 #include <iostream>
 
 #include <global_planner/data_structures/fibonacci_queue.hpp>
-#include <global_planner/data_structures/point.hpp>
+#include <global_planner/data_structures/math.hpp>
 
-class AStarSearch
+
+namespace AStar
 {
-public:
-    struct Node : public FibonacciQueue<Distance>::Element
+    struct Cost
+    {
+        double g, h, f;
+
+        Cost() : g(0), h(0), f(0)
+        {}
+
+        Cost(double g, double h) : g(g), h(h), f(g+h)
+        {}
+
+        void setGCost(double d)
+        {
+            g = d; 
+            f = g + h;
+        };
+
+        void setHCost(double d)
+        {
+            h = d;
+            f = g + h;
+        };
+
+        Cost operator-() const {
+            return Cost(-g, -h);
+        }
+
+        virtual void reset(Index2 cur, Index2 goal)
+        {
+            h = (cur - goal).norm<double>(); // Distance::octileDistance(cur, goal);
+            g = std::numeric_limits<double>::infinity();
+            f = std::numeric_limits<double>::infinity();
+        }
+    };
+
+    struct Node : public FibonacciQueue<Cost>::Element
     {
         Index2 index;
         int state; // 0 - free, 1 - occupied, 2 - inflated
-        Distance g, h, f;
+        Cost cost;
         bool visited;
         Node *parent;
 
         Node(int x, int y) :
             Element(),
             index(Index2(x, y)),
-            g(0,0), h(0,0), f(0,0),
+            cost(),
             visited(false), parent(nullptr), state(0)
         {
         }
-
-        void setGCost(Distance d)
-        {
-            g = d;
-            f = g + h;
-        };
-
-        void setHCost(Distance d)
-        {
-            h = d;
-            f = g + h;
-        };
     };
 
-    AStarSearch(int width, int height);
-
-    void resize(int width, int height);
-    std::vector<Node *> search(Index2 start, Index2 end);
-
-    inline Node*& getNodeAt(Index2 i)
+    class Search
     {
-        return getNodeAt(i.x, i.y);
-    }
+    public:
+        Search(int width, int height);
 
-    inline Node*& getNodeAt(int x, int y)
-    {
-        return grid_[y * width_ + x];
-    }
+        void resize(int width, int height);
+        std::vector<Index2> search(Index2 start, Index2 end);
 
-    inline bool isTraversable(Node *n)
-    {
-        return n->state == 0;
-    }
-
-    inline bool isTraversable(Index2 i)
-    {
-        if (i.x < 0 || i.x >= width_ || i.y < 0 || i.y >= height_)
+        inline int getWidth()
         {
-            return false;
+            return width_;
         }
 
-        return isTraversable(getNodeAt(i));
-    }
+        inline int getHeight()
+        {
+            return height_;
+        }
 
-    inline int getWidth()
+        inline Node*& getNodeAt(Index2 i)
+        {
+            return getNodeAt(i.x, i.y);
+        }
+
+        inline Node*& getNodeAt(int x, int y)
+        {
+            return grid_[y * width_ + x];
+        }
+
+    protected:
+
+        inline bool isTraversable(Node *n)
+        {
+            return n->state == 0;
+        }
+
+        inline bool isTraversable(Index2 i)
+        {
+            if (i.x < 0 || i.x >= width_ || i.y < 0 || i.y >= height_)
+            {
+                return false;
+            }
+
+            return isTraversable(getNodeAt(i));
+        }
+
+        virtual void resetNode(Node *node, Index2 goal);
+        virtual void findSuccessors(Node *node);
+        virtual bool setVertex(Node *node) { return false; };
+
+        /**
+         * Updates the vertex. 
+         * @param Node
+         * @param Neighbor node
+         * @param Distance of neighbor to node.
+         * @return True if the G-cost has decreased.
+         */
+        virtual bool updateVertex(Node *node, Node *neighbor);
+
+        /**
+         * Checks if two nodes represent a vertex with lower cost
+         * than previously discovered.
+         * Vertex from node to neighbor.
+         * @param  node     The start node of the vertex.
+         * @param  neighbor The end node of the vertex, for which the parent should be updated.
+         * @return          True if lower G-cost.
+         */
+        virtual bool relax(Node *node, Node *neighbor);
+
+        Node **grid_;
+        FibonacciQueue<Cost>::Container<Node> queue_;
+
+        int width_, height_;
+    };
+
+    inline bool operator <(const Cost& a, const Cost& b)
     {
-        return width_;
+        if (a.f == b.f)
+        {
+            return a.g > b.g;
+        }
+
+        return a.f < b.f;
     }
 
-    inline int getHeight()
+    inline bool operator ==(const Cost& a, const Cost& b)
     {
-        return height_;
+        return a.f == b.f;
     }
+}
 
-protected:
-    virtual void resetNode(Node *node, Index2 goal);
-    virtual void findSuccessors(Node *node);
-    virtual void setVertex(Node *node) {};
-
-    /**
-     * Updates the cost. 
-     * @param Node
-     * @param Neighbor node
-     * @param Distance of neighbor to node.
-     * @return True if the cost has decreased.
-     */
-    virtual bool computeCost(Node *node, Node *neighbor, const Distance &d);
-
-    Node **grid_;
-    FibonacciQueue<Distance>::Container<Node> queue_;
-
-    int width_, height_;
-};
+namespace std {
+    template<> class numeric_limits<AStar::Cost> {
+    public:
+       static AStar::Cost infinity() { return AStar::Cost(numeric_limits<double>::infinity(), 0); };
+    };
+}
 
 #endif

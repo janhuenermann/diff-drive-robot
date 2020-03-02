@@ -8,7 +8,7 @@ class PlannerNode
 {
 public:
 
-    PlannerNode() : nh_(), algorithm_(new LazyThetaStarSearch(0, 0))
+    PlannerNode() : nh_(), algorithm_(new ThetaStar::LazySearch(0, 0))
     {
         sub_occ_grid_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &PlannerNode::mapCallback, this);
     }
@@ -54,7 +54,7 @@ public:
     }
 
 protected:
-    LazyThetaStarSearch* algorithm_;
+    ThetaStar::LazySearch* algorithm_;
 
     ros::NodeHandle nh_;
     ros::Subscriber sub_occ_grid_;
