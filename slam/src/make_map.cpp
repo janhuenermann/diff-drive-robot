@@ -66,28 +66,30 @@ void LidarMap::callback_scan(const sensor_msgs::LaserScan& msg){
  std::vector<float> ranges = msg.ranges;
  // Scan is 360 degrees
  for(int i=0;i<360;i++){
+   MapIdx end_idx;
    geometry_msgs::Pose2D end_pos;
-   // Obsticle found
-   if(ranges[i]!=INFINITY){
-     end_pos = inverseSensorModel(robot_pos,ranges[i],i);
-     MapIdx end_idx = pos2idx(end_pos);
-     if(idx_in_map(end_idx)){
-       update_at_idx(end_idx,true);
-     }
-    // No obsticle found
-   }else{
-     end_pos = inverseSensorModel(robot_pos,max_range,i);
-     MapIdx end_idx = pos2idx(end_pos);
-     if(idx_in_map(end_idx)){
-       update_at_idx(end_idx,false);
-     }
-   }
+
+   bool obstacle_found = ranges[i] != INFINITY;
+   float range = obstacle_found ? ranges[i] : max_range;
+
+   end_pos = inverseSensorModel(robot_pos,range,i);
+   end_idx = pos2idx(end_pos);
+
    // find free cells between robot position and scan endpoint
    std::vector<MapIdx> los_idx = line_of_sight(end_pos);
    for(int i=0;i<los_idx.size();i++){
-     if(idx_in_map(los_idx[i])){
-       update_at_idx(los_idx[i],false);
-     }
+    if (los_idx[i].x == end_idx.x && los_idx[i].y == end_idx.y)
+    {
+      break ;
+    }
+    
+    if(idx_in_map(los_idx[i])){
+      update_at_idx(los_idx[i], false);
+    }
+   }
+
+   if(obstacle_found && idx_in_map(end_idx)){
+    update_at_idx(end_idx, true);
    }
  }
  // publish the new grid
