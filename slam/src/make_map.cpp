@@ -66,7 +66,7 @@ void LidarMap::callback_scan(const sensor_msgs::LaserScan& msg){
  std::vector<float> ranges = msg.ranges;
  // Scan is 360 degrees
  for(int i=0;i<360;i++){
-   MapIdx end_idx;
+   MapIdx end_idx(0,0);
    geometry_msgs::Pose2D end_pos;
 
    bool obstacle_found = ranges[i] != INFINITY;
@@ -82,7 +82,7 @@ void LidarMap::callback_scan(const sensor_msgs::LaserScan& msg){
     {
       break ;
     }
-    
+
     if(idx_in_map(los_idx[i])){
       update_at_idx(los_idx[i], false);
     }
