@@ -11,13 +11,16 @@ using namespace cv;
 class DrawMapNode
 {
 public:
-    DrawMapNode() : nh_(), frame_()
+    DrawMapNode() :
+        nh_(), frame_(),
+        received_pose_(false), received_map_(false), received_path_(false), received_nav_goal_(false)
     {
         sub_map_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &DrawMapNode::mapCallback, this);
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &DrawMapNode::robotPoseCallback, this);
         sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/goal", 1, &DrawMapNode::goalCallback, this);
         sub_path_ = nh_.subscribe<nav_msgs::Path>("/navigation/path", 1, &DrawMapNode::navigationCallback, this);
 
+        ROS_INFO("Booting draw map node");
         namedWindow("Map", WINDOW_AUTOSIZE);
     }
 
@@ -30,29 +33,37 @@ public:
             frame_.create(map_.info.height, map_.info.width, CV_8UC3);
         }
 
+        received_map_ = true;
+
         draw();
     }
 
     void robotPoseCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
     {
         robot_pose_ = *msg;
+        received_pose_ = true;
         draw();
     }
 
     void goalCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
     {
         nav_goal_ = *msg;
+        received_nav_goal_ = true;
         draw();
     }
 
     void navigationCallback(const nav_msgs::Path::ConstPtr& msg)
     {
         planned_path_ = *msg;
+        received_path_ = true;
         draw();
     }
 
     void draw()
     {
+        if (!received_map_)
+            return ;
+
         const int w = map_.info.width;
         const int h = map_.info.height;
         const float res = map_.info.resolution;
@@ -83,17 +94,28 @@ public:
             }
         }
 
-        setColor(robot_pose_, 255, 0, 0);
-        setColor(nav_goal_, 0, 255, 0);
-
-        assert(planned_path_.poses.size() >= 2); // start and end point
-
-        for (int k = 1; k < planned_path_.poses.size()-1; ++k)
+        if (received_pose_)
         {
-            geometry_msgs::PoseStamped& pose_stamped = planned_path_.poses[k];
-            setColor(pose_stamped.pose.position, 0, 0, 255);
+            setColor(robot_pose_, 255, 0, 0);
         }
+        
+        if (received_nav_goal_)
+        {
+            setColor(nav_goal_, 0, 255, 0);
+        }
+        
 
+        if (received_path_)
+        {
+            assert(planned_path_.poses.size() >= 2); // start and end point
+
+            for (int k = 1; k < planned_path_.poses.size()-1; ++k)
+            {
+                geometry_msgs::PoseStamped& pose_stamped = planned_path_.poses[k];
+                setColor(pose_stamped.pose.position, 0, 0, 255);
+            }
+        }
+        
         imshow("Map", frame_);
     }
 
@@ -126,9 +148,16 @@ protected:
     Mat frame_;
 
     geometry_msgs::Pose2D nav_goal_;
+    bool received_nav_goal_;
+
     geometry_msgs::Pose2D robot_pose_;
+    bool received_pose_;
+
     nav_msgs::OccupancyGrid map_;
+    bool received_map_;
+
     nav_msgs::Path planned_path_;
+    bool received_path_;
 
     ros::NodeHandle nh_;
     ros::Subscriber sub_goal_;
