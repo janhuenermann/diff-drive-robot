@@ -1,0 +1,15 @@
+<launch>
+
+    <arg name="debug" value="true" />
+
+    <env name="ROSCONSOLE_CONFIG_FILE" value="$(find bringup)/config/console.conf"/>
+
+    <node name="slam" pkg="slam" type="node" />
+    <node name="global_planner" pkg="global_planner" type="node" />
+
+    <group if="$(arg debug)">
+        <node name="static_nav_goal" pkg="bringup" type="pub_pose2" args="/navigation/goal 3.5 3.5" />
+        <node name="show_map" pkg="draw" type="node" />
+    </group>
+
+</launch>
