@@ -26,13 +26,20 @@ public:
         ROS_INFO("Booted planner node");
     }
 
+    Index2 getIndexFromPosition(Point2 pt)
+    {
+        return ((pt - map_origin_) / map_resolution_).cast<int>();
+    }
+
     void findPath()
     {
         if (!received_map_ || !received_nav_goal_ || !received_robot_pose_)
+        {
             return ;
+        }
 
-        Index2 start = (robot_position_ / map_resolution_).cast<int>();
-        Index2 target = (goal_ / map_resolution_).cast<int>();
+        Index2 start = getIndexFromPosition(robot_position_);
+        Index2 target = getIndexFromPosition(goal_);
 
         ROS_DEBUG("Starting path planning");
         path_ = algorithm_->search(start, target);
@@ -75,6 +82,7 @@ public:
         }
 
         map_resolution_ = (double)msg->info.resolution;
+        map_origin_ = Point2(msg->info.origin.position.x, msg->info.origin.position.y);
 
         // copy data
         for (int j = 0; j < h; ++j)
@@ -121,6 +129,7 @@ protected:
     bool received_robot_pose_;
     bool received_nav_goal_;
 
+    Point2 map_origin_;
     Point2 robot_position_;
     double robot_angle_;
 

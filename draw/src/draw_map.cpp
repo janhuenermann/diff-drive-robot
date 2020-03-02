@@ -140,12 +140,18 @@ public:
 
     inline void setColor(geometry_msgs::Pose2D pose, uint8_t r, uint8_t g, uint8_t b)
     {
-        setColor((int)(pose.x / map_.info.resolution), (int)(pose.y / map_.info.resolution), r, g, b);
+        setColor(
+            (int)((pose.x - map_.info.origin.position.x) / map_.info.resolution), 
+            (int)((pose.y - map_.info.origin.position.y) / map_.info.resolution),
+            r, g, b);
     }
 
     inline void setColor(geometry_msgs::Point pt, uint8_t r, uint8_t g, uint8_t b)
     {
-        setColor((int)(pt.x / map_.info.resolution), (int)(pt.y / map_.info.resolution), r, g, b);
+        setColor(
+            (int)((pt.x - map_.info.origin.position.x) / map_.info.resolution), 
+            (int)((pt.y - map_.info.origin.position.y) / map_.info.resolution),
+            r, g, b);
     }
 
 
