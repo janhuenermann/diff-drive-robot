@@ -31,6 +31,11 @@ public:
         return ((pt - map_origin_) / map_resolution_).cast<int>();
     }
 
+    Point2 getPositionFromIndex(Index2 idx)
+    {
+        return idx.cast<double>() * map_resolution_ + map_origin_;
+    }
+
     void findPath()
     {
         if (!received_map_ || !received_nav_goal_ || !received_robot_pose_)
@@ -55,7 +60,7 @@ public:
 
         for (Index2& point : path_)
         {
-            Point2 world_point = point.cast<double>() * map_resolution_;
+            Point2 world_point = getPositionFromIndex(point);
 
             geometry_msgs::PoseStamped pose_stamped;
             pose_stamped.pose.position.x = world_point.x;
