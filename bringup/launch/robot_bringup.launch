@@ -8,7 +8,7 @@
     <node name="global_planner" pkg="global_planner" type="node" output="screen" />
 
     <group if="$(arg debug)">
-        <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 3.5 3.5" output="screen" />
+        <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 1 1" output="screen" />
         <node name="show_map" pkg="draw" type="node" output="screen" />
     </group>
 
