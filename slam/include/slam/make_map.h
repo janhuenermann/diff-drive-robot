@@ -29,10 +29,10 @@ private:
   float max_range = 3.5;          // maximal range of LIDAR
   float inflation_radius;         // radius added to obstacle to avoid robot touching them
   // log odds parameters
-  float l_occ;
-  float l_free;
-  float L_THRESH = 2;
-  float L_max = 10;
+  float l_occ = 0.1;
+  float l_free = -0.1;
+  float L_THRESH = 0.3;
+  float L_max = 20;
   // Map info
   geometry_msgs::Pose2D min_pos;
   float cell_size;
@@ -44,6 +44,7 @@ private:
   std::vector<MapIdx> mask_inflation; // holds relative positions of to be inflated cells
   std::vector<std::vector<std::set<MapIdx>>> inflation;    // holds inflation info
 
+  int get_state(const MapIdx &idx);
   geometry_msgs::Pose2D inverseSensorModel(geometry_msgs::Pose2D pos,float rng,float deg);
 public:
   LidarMap(ros::NodeHandle *nh,geometry_msgs::Pose2D mi_pos,geometry_msgs::Pose2D max_pos, float c_size,float inf_radius);

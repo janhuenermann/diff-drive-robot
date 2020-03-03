@@ -47,7 +47,7 @@ int main(int argc, char **argv){
 
 
   float cell_size = std::stof(cell_size_s);
-  float inflation_rad = 0.2;
+  float inflation_rad = 0.40;
   // start map
   LidarMap map(&n,min_pos,max_pos,cell_size,inflation_rad);
   ROS_INFO("Booted slam node");
