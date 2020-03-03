@@ -27,8 +27,11 @@ void PIDController::update(double &linear_vel, double &angular_vel)
 {
     prev_time_delta_ = (ros::Time::now() - prev_update_time_).toSec();
 
-    double err_pos = (position_true_ - position_target_).norm<double>();
-    double err_ang = (position_target_ - position_true_).atan2();
+    Vec2 delta = position_target_ - position_true_;
+
+    double angle_target = delta.atan2();
+    double err_pos = delta.norm<double>();
+    double err_ang = angle_target - angle_true_;
 
     if (err_ang >= M_PI)
     {
@@ -40,6 +43,9 @@ void PIDController::update(double &linear_vel, double &angular_vel)
     }
 
     Vec2 err(err_pos, err_ang);
+
+    ROS_INFO("dx: %.3lf, dy: %.3lf", delta.x, delta.y);
+    // ROS_INFO("Error: %.4lf; %.4lf; %.4lf", angle_target, angle_true_, err_ang);
 
     Vec2 p_term = p_ * err;
     Vec2 i_term = i_ * integrated_err_;

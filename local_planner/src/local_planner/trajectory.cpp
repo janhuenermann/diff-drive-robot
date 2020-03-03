@@ -20,13 +20,13 @@ void Trajectory::update(std::vector<Point2> path, Point2 robot_pos, Point2 robot
     if (n_ > 0)
     {
         // avoid drift if we update the trajectory often
-        s_ = (robot_pos - next_point_).norm<double>();
-        s_ = std::max(0.0, std::min(ds, s_));
+        double dist = (robot_pos - next_point_).norm<double>();
+        s_ = std::max(0.0, std::min(ds, dist));
     }
     else
     {
         // first spline, set to step size
-        s_ = ds;
+        s_ = std::min(0.1, spline_->length);
     }
 
     next(false);
@@ -44,16 +44,20 @@ void Trajectory::next(bool move)
         return ;
     }
 
-    if (move)
-    {
-        s_ += getStepSize();
-    }
-
     if (s_ > spline_->length)
     {
         s_ = spline_->length;
+        next_point_ = spline_->position(s_);
         at_end_ = true;
+
         reset();
+
+        return ;
+    }
+
+    if (move)
+    {
+        s_ += getStepSize();
     }
 
     next_point_ = spline_->position(s_);
