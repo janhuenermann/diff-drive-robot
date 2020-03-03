@@ -1,37 +1,82 @@
 #include <local_planner/trajectory.hpp>
 
 
-void Trajectory::update(std::vector<Point2> path, Point2 robot_pos, Point2 robot_vel);
+void Trajectory::update(std::vector<Point2> path, Point2 robot_pos, Point2 robot_vel)
 {
-    path_ = path;
-
     if (spline_ != nullptr)
     {
         delete spline_;
+    }
 
+    s_ = 0.0; // pretend to be at the beginning of our new spline, for calculating the step size
+    has_path_ = true;
+    at_end_ = false;
+    path_ = path;
+    spline_ = SplinePath::fitCardinal(0.0, path, robot_vel, Point2(0, 0));
+
+    // figure out our next point on the spline
+    double ds = getStepSize();
+
+    if (n_ > 0)
+    {
         // avoid drift if we update the trajectory often
-        double ds = getStepSize();
-        double rem = (robot_pos - next_point_).norm<double>();
-
-        s_ = std::max(0.0, std::min(ds, rem - ds));
+        s_ = (robot_pos - next_point_).norm<double>();
+        s_ = std::max(0.0, std::min(ds, s_));
     }
     else
     {
-        s_ = 0.0;
+        // first spline, set to step size
+        s_ = ds;
     }
 
-    spline_ = SplinePath::fitCardinal(0.0, path, robot_vel, Point2(0, 0));
-
-    next();
+    next(false);
 }
 
-void Trajectory::next()
+void Trajectory::next(bool move)
 {
-    s_ += getStepSize();
+    if (!has_path_)
+    {
+        throw std::invalid_argument("trajectory does not contain path");
+    }
+
+    if (at_end_)
+    {
+        return ;
+    }
+
+    if (move)
+    {
+        s_ += getStepSize();
+    }
+
+    if (s_ > spline_->length)
+    {
+        s_ = spline_->length;
+        at_end_ = true;
+        reset();
+    }
+
     next_point_ = spline_->position(s_);
+    n_++;
+}
+
+void Trajectory::reset()
+{
+    n_ = 0;
 }
 
 double Trajectory::getStepSize()
 {
-    return step_size_;
+    // TODO: v as function of spline derivative magnitude
+    return v_ * dt_;
+}
+
+double Trajectory::getRemainingPathLength()
+{
+    if (!has_path_)
+    {
+        return 0.0;
+    }
+
+    return spline_->length - s_;
 }
