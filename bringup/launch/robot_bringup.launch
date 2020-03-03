@@ -5,18 +5,19 @@
     <arg name="start_pos" default="$(env X_POS),$(env Y_POS)" />
 
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find bringup)/config/console.conf"/>
-    <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${node}] [${time}]: ${message}" />
+    <env name="ROSCONSOLE_FORMAT" value="[${severity} ${node}, ${walltime}]: ${message}" />
 
     <node name="slam" pkg="slam" type="node" output="screen" />
     <node name="global_planner" pkg="global_planner" type="node" output="screen" />
-
-   <!--  <node name="mission_planner" pkg="mission_planner" type="node" output="screen">
+    <node name="local_planner" pkg="local_planner" type="controller" output="screen" delay="5" />
+ 
+    <!-- <node name="mission_planner" pkg="mission_planner" type="node" output="screen">
         <param name="goals" type="string" value="$(arg goals)" />
         <param name="start_pos" type="string" value="$(arg start_pos)" />
     </node> -->
 
     <group if="$(arg debug)">
-        <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 0 0.5" output="screen" />
+        <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 4 2" output="screen" />
         <node name="show_map" pkg="draw" type="node" output="screen" />
     </group>
 
