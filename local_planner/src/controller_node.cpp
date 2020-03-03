@@ -18,17 +18,20 @@ public:
         nh_()
     {
         // PID params
-        const double freq = 40.0;
-        const double p_pos = 0.3, i_pos = 0.00, d_pos = 0.1;
-        const double p_ang = 0.5, i_ang = 0.02, d_ang = 0.0;
+        const double freq = 50.0;
+        const double p_pos = 1.60, i_pos = 0.00, d_pos = 0.20;
+        const double p_ang = 1.00, i_ang = 0.00, d_ang = 0.05;
 
         pid_.setParameters(freq, Vec2(p_pos, p_ang), Vec2(i_pos, i_ang), Vec2(d_pos, d_ang));
         
-        traj_.setDistance(0.4);
-        traj_.setStepSize(1e-3);
+        traj_.setDistance(0.20);
+        traj_.setStepSize(1e-2);
+
+        ros::Duration(5.0).sleep();
 
         pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
         pub_traj_ = nh_.advertise<math::SplinePathData>("/navigation/trajectory", 1, true);
+        pub_pursuit_point_ = nh_.advertise<geometry_msgs::Pose2D>("/navigation/pursuit_point", 5);
 
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &ControllerNode::robotPoseCallback, this);
         sub_robot_twist_ = nh_.subscribe<geometry_msgs::Twist>("/robot_velocity", 1, &ControllerNode::robotTwistCallback, this);
@@ -72,7 +75,9 @@ public:
         }
 
         if (path.size() < 2)
+        {
             return ;
+        }
 
         // update our trajectory
         traj_.update(path, robot_velocity_);
@@ -94,14 +99,21 @@ public:
         {
             double linear_vel, angular_vel;
 
-            Point2 intermediate_point = traj_.nextPoint(robot_position_);
-            // ROS_INFO("Next point x: %.3lf y: %.3lf", intermediate_point.x, intermediate_point.y);
+            Point2 pursuit_point = traj_.nextPoint(robot_position_);
+            
+            // ROS_INFO("Next point x: %.3lf y: %.3lf", pursuit_point.x, pursuit_point.y);
 
-            pid_.setTargetPosition(intermediate_point);
+            pid_.setTargetPosition(pursuit_point);
             pid_.update(linear_vel, angular_vel);
 
             twist.linear.x = linear_vel;
             twist.angular.z = angular_vel;
+
+            geometry_msgs::Pose2D pursuit_point_pose;
+            pursuit_point_pose.x = pursuit_point.x;
+            pursuit_point_pose.y = pursuit_point.y;
+
+            pub_pursuit_point_.publish(pursuit_point_pose);
         }
 
         pub_cmd_vel_.publish(twist);
@@ -121,6 +133,7 @@ protected:
     ros::NodeHandle nh_;
     ros::Publisher pub_cmd_vel_;
     ros::Publisher pub_traj_;
+    ros::Publisher pub_pursuit_point_;
     ros::Subscriber sub_robot_pose_;
     ros::Subscriber sub_robot_twist_;
     ros::Subscriber sub_path_;

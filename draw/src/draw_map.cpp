@@ -21,13 +21,19 @@ public:
     DrawMapNode() :
         nh_(), frame_(),
         received_pose_(false), received_map_(false), received_path_(false), received_nav_goal_(false),
+        received_pursuit_point_(false),
         trajectory_(nullptr)
     {
+        const double freq = 5.0;
+
         sub_map_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &DrawMapNode::mapCallback, this);
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &DrawMapNode::robotPoseCallback, this);
         sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/goal", 1, &DrawMapNode::goalCallback, this);
         sub_path_ = nh_.subscribe<nav_msgs::Path>("/navigation/path", 1, &DrawMapNode::navigationCallback, this);
+        sub_pursuit_point_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/pursuit_point", 1, &DrawMapNode::pursuitPointCallback, this);
         sub_traj_ = nh_.subscribe<math::SplinePathData>("/navigation/trajectory", 1, &DrawMapNode::trajectoryCallback, this);
+
+        tick_timer_ = nh_.createTimer(ros::Duration(1.0 / freq), &DrawMapNode::tickCallback, this);
 
         ROS_INFO("Booting draw map node");
         namedWindow("Map", WINDOW_NORMAL);
@@ -43,29 +49,24 @@ public:
         }
 
         received_map_ = true;
-
-        draw();
     }
 
     void robotPoseCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
     {
         robot_pose_ = *msg;
         received_pose_ = true;
-        draw();
     }
 
     void goalCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
     {
         nav_goal_ = *msg;
         received_nav_goal_ = true;
-        draw();
     }
 
     void navigationCallback(const nav_msgs::Path::ConstPtr& msg)
     {
         planned_path_ = *msg;
         received_path_ = true;
-        draw();
     }
 
     void trajectoryCallback(const math::SplinePathData::ConstPtr& msg)
@@ -76,6 +77,17 @@ public:
         }
 
         trajectory_ = SplinePath::fromData(*msg);
+    }
+
+    void pursuitPointCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
+    {
+        pursuit_point_.x = msg->x;
+        pursuit_point_.y = msg->y;
+        received_pursuit_point_ = true;
+    }
+
+    void tickCallback(const ros::TimerEvent& evt)
+    {
         draw();
     }
 
@@ -130,6 +142,11 @@ public:
             }
         }
 
+        if (received_pursuit_point_)
+        {
+            setPixel(pursuit_point_, 0, 255, 255);
+        }
+        
         if (received_pose_)
         {
             setColor(robot_pose_, 255, 0, 0);
@@ -247,12 +264,19 @@ protected:
     nav_msgs::Path planned_path_;
     bool received_path_;
 
+    Point2 pursuit_point_;
+    bool received_pursuit_point_;
+
     ros::NodeHandle nh_;
     ros::Subscriber sub_goal_;
     ros::Subscriber sub_map_;
     ros::Subscriber sub_path_;
+    ros::Subscriber sub_pursuit_point_;
     ros::Subscriber sub_robot_pose_;
     ros::Subscriber sub_traj_;
+
+    ros::Timer tick_timer_;
+
 
 };
 

@@ -60,6 +60,8 @@ protected:
 
     std::vector<Point2> path_;
 
+    void updateCurrentPoint();
+
 };
 
 #endif
