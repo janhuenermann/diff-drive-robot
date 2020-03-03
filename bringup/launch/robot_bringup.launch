@@ -1,19 +1,26 @@
 <launch>
-
+    <include file="$(find bringup)/launch/world.launch" />
     <arg name="debug" default="true" />
-    <arg name="goals" default="$(env goals)" />
+    <arg name="goals" default="$(env GOALS)" />
     <arg name="start_pos" default="$(env X_POS),$(env Y_POS)" />
+    <arg name="cell_size" default="$(env CELL_SIZE)" />
+    <arg name="min_pos" default="$(env MIN_POS)" />
+    <arg name="max_pos" default="$(env MAX_POS)" />
 
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find bringup)/config/console.conf"/>
     <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${node}] [${time}]: ${message}" />
 
-    <node name="slam" pkg="slam" type="node" output="screen" />
+    <node name="slam" pkg="slam" type="node" output="screen">
+      <param name="start_pos" type="string" value="$(arg start_pos)" />
+      <param name="min_pos" type="string" value="$(arg min_pos)" />
+      <param name="max_pos" type="string" value="$(arg max_pos)" />
+      <param name="cell_size" type="string" value="$(arg cell_size)" />
+    </node>
     <node name="global_planner" pkg="global_planner" type="node" output="screen" />
+    <node name="mission_planner" pkg="mission_planner" type="node" output="screen">
+      <param name="goals" type="string" value="$(arg goals)" />
+    </node>
 
-   <!--  <node name="mission_planner" pkg="mission_planner" type="node" output="screen">
-        <param name="goals" type="string" value="$(arg goals)" />
-        <param name="start_pos" type="string" value="$(arg start_pos)" />
-    </node> -->
 
     <group if="$(arg debug)">
         <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 0 0.5" output="screen" />

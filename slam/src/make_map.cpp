@@ -34,8 +34,8 @@ LidarMap::LidarMap(ros::NodeHandle *nh,geometry_msgs::Pose2D mi_pos,geometry_msg
   cell_size(c_size)
   {
     // Init subscribers and publishers
-    scan_sub=nh->subscribe("scan",10,&LidarMap::callback_scan,this);
-    pos_sub = nh->subscribe("robot_pose",1,&LidarMap::callback_pos,this);
+    scan_sub=nh->subscribe("/scan",10,&LidarMap::callback_scan,this);
+    pos_sub = nh->subscribe("/robot_pose",1,&LidarMap::callback_pos,this);
     grid_pub = nh->advertise<nav_msgs::OccupancyGrid>("/map", 5);
     // Initialize occupancy grid metadata
     occ_grid.info.resolution = cell_size;
@@ -124,6 +124,7 @@ MapIdx LidarMap::pos2idx(geometry_msgs::Pose2D pos){
   Returns:
       Index in map
   */
+  //ROS_INFO("pos:%f  minus:%f min:%f" ,pos.x,(pos.x - min_pos.x),min_pos.x);
   int x = round((pos.x - min_pos.x)/cell_size);
   int y = round((pos.y - min_pos.y)/cell_size);
   MapIdx res(x,y);
