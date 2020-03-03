@@ -335,6 +335,10 @@ void LidarMap::update_at_idx(MapIdx idx, bool occupied){
       }
     }
   }
+  if(std::abs(log_odds[idx.x][idx.y])<L_THRESH){
+    occ_grid.data[idx.y*width+idx.x] = UNKNOWN;
+    add_inflation(idx,false);
+  }
 }
 
 // occupied is the new occupation status
