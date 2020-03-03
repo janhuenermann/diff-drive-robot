@@ -50,8 +50,8 @@ LidarMap::LidarMap(ros::NodeHandle *nh,geometry_msgs::Pose2D mi_pos,geometry_msg
     // Generate relative coordinates to inflate
     mask_inflation = gen_mask();
     // Init log odds
-    l_occ = log(0.65/0.35);
-    l_free = log(0.35/0.65);
+    l_occ = 0.1;
+    l_free = -0.1;
     log_odds.resize(width, std::vector<float>(height));
     std::fill(log_odds.begin(), log_odds.end(), std::vector<float>(height, 0));
     // Stores all occupied cells causing an inflation

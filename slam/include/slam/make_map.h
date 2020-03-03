@@ -31,8 +31,8 @@ private:
   // log odds parameters
   float l_occ;
   float l_free;
-  float L_THRESH = 5;
-  float L_max = 100;
+  float L_THRESH = 2;
+  float L_max = 10;
   // Map info
   geometry_msgs::Pose2D min_pos;
   float cell_size;
