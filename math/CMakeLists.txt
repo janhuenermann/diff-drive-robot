@@ -49,7 +49,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  Spline.msg
+  SplineData.msg
+  SplinePathData.msg
 )
 
 ## Generate services in the 'srv' folder

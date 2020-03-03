@@ -55,6 +55,24 @@ Spline Spline::calculate(Point2 i, Point2 f, Point2 di, Point2 df, Point2 ddi, P
     return Spline(a, b);
 }
 
+math::SplineData Spline::toData() const
+{
+    math::SplineData data;
+
+    for (int k = 0; k<6; ++k)
+        data.coeffs[k] = a[k];
+
+    for (int k = 0; k<6; ++k)
+        data.coeffs[6+k] = b[k];
+
+    return data;
+}
+
+Spline Spline::fromData(const math::SplineData &data)
+{
+    return Spline(data.coeffs.data(), data.coeffs.data()+6);
+}
+
 
 Point2 Spline::position(double t) const
 {
@@ -110,24 +128,42 @@ void Spline::calculateLength()
     length *= 0.5;
 }
 
+math::SplinePathData SplinePath::toData() const
+{
+    math::SplinePathData pathData;
+
+    for (auto &child : children)
+    {
+        pathData.splines.push_back(child.toData());
+    }
+
+    return pathData;
+}
+
 const Spline& SplinePath::select(double ss, double &t) const
 {
     assert(ss >= 0.0 && ss <= length);
 
     double _ss = ss;
 
+    if (std::abs(ss - length) < 1e-4) // we meant the endpoint
+    {
+        t = 1.0;
+        return children.back();
+    }
+
     for (const Spline &sp : children)
     {
         if (_ss - sp.length <= 0.0)
         {
-            t = ss / sp.length;
+            t = _ss / sp.length;
             return sp;
         }
 
         _ss -= sp.length;
     }
 
-    throw std::invalid_argument("ss too big.");
+    throw std::invalid_argument("ss too big. " + std::to_string(ss) + " vs " + std::to_string(length));
 }
 
 Point2 SplinePath::position(double ss) const
@@ -146,6 +182,21 @@ Point2 SplinePath::acceleration(double ss) const
 {
     double t;
     return select(ss, t).acceleration(t);
+}
+
+SplinePath *SplinePath::fromData(const math::SplinePathData &pathData)
+{
+    SplinePath *out = new SplinePath();
+
+    for (const math::SplineData &data : pathData.splines)
+    {
+        Spline sp = Spline::fromData(data);
+
+        out->length += sp.length;
+        out->children.push_back(sp);
+    }
+
+    return out;
 }
 
 SplinePath *SplinePath::fitCardinal(double c, std::vector<Point2> pts, Point2 dstart, Point2 dend, double lower_limit_len)

@@ -4,6 +4,8 @@
 #include <vector>
 #include <cstring>
 
+#include <math/SplineData.h>
+#include <math/SplinePathData.h>
 #include <math/vector2.hpp>
 
 struct Spline
@@ -13,7 +15,7 @@ struct Spline
     double b[6];
     double length;
 
-    Spline(double a[6], double b[6])
+    Spline(const double a[6], const double b[6])
     {
         std::memcpy(this->a, a, sizeof(double) * 6);
         std::memcpy(this->b, b, sizeof(double) * 6);
@@ -24,6 +26,9 @@ struct Spline
     Point2 velocity(double t) const;
     Point2 acceleration(double t) const;
 
+    math::SplineData toData() const;
+
+    static Spline fromData(const math::SplineData &data);
     static Spline calculate(Point2 i, Point2 f, Point2 di, Point2 df, Point2 ddi, Point2 ddf);
 
 protected:
@@ -35,6 +40,10 @@ protected:
 struct SplinePath
 {
 public:
+
+    SplinePath() : length(0)
+    {
+    }
 
     double length;
     std::vector<Spline> children;
@@ -67,6 +76,9 @@ public:
         return ss / length;
     }
 
+    math::SplinePathData toData() const;
+
+    static SplinePath *fromData(const math::SplinePathData &data);
     static SplinePath *fitCardinal(double c, std::vector<Point2> pts, Point2 dstart, Point2 dend, double lower_limit_len = NAN);
     
     inline static SplinePath *fitCatmullRom(std::vector<Point2> pts, Point2 dstart, Point2 dend)

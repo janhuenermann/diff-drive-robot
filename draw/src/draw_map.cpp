@@ -1,24 +1,33 @@
 #include <ros/ros.h>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <nav_msgs/Path.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/PoseStamped.h>
 
+#include <math/vector2.hpp>
+#include <math/SplinePathData.h>
+#include <math/spline.hpp>
+
 using namespace cv;
+
+const int PX_CELL_SIZE = 3;
 
 class DrawMapNode
 {
 public:
     DrawMapNode() :
         nh_(), frame_(),
-        received_pose_(false), received_map_(false), received_path_(false), received_nav_goal_(false)
+        received_pose_(false), received_map_(false), received_path_(false), received_nav_goal_(false),
+        trajectory_(nullptr)
     {
         sub_map_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &DrawMapNode::mapCallback, this);
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &DrawMapNode::robotPoseCallback, this);
         sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/goal", 1, &DrawMapNode::goalCallback, this);
         sub_path_ = nh_.subscribe<nav_msgs::Path>("/navigation/path", 1, &DrawMapNode::navigationCallback, this);
+        sub_traj_ = nh_.subscribe<math::SplinePathData>("/navigation/trajectory", 1, &DrawMapNode::trajectoryCallback, this);
 
         ROS_INFO("Booting draw map node");
         namedWindow("Map", WINDOW_NORMAL);
@@ -30,7 +39,7 @@ public:
 
         if (frame_.cols != map_.info.width || frame_.rows != map_.info.height)
         {
-            frame_.create(map_.info.height, map_.info.width, CV_8UC3);
+            frame_.create(map_.info.height * PX_CELL_SIZE, map_.info.width * PX_CELL_SIZE, CV_8UC3);
         }
 
         received_map_ = true;
@@ -56,6 +65,17 @@ public:
     {
         planned_path_ = *msg;
         received_path_ = true;
+        draw();
+    }
+
+    void trajectoryCallback(const math::SplinePathData::ConstPtr& msg)
+    {
+        if (trajectory_ != nullptr)
+        {
+            delete trajectory_;
+        }
+
+        trajectory_ = SplinePath::fromData(*msg);
         draw();
     }
 
@@ -96,7 +116,12 @@ public:
             }
         }
 
-        if (received_path_)
+        if (trajectory_ != nullptr)
+        {
+            drawTrajectory();
+        }
+
+        if (received_path_ && planned_path_.poses.size() > 1)
         {
             for (int k = 1; k < planned_path_.poses.size()-1; ++k)
             {
@@ -115,20 +140,70 @@ public:
             setColor(nav_goal_, 0, 255, 0);
         }
 
-        ROS_INFO("Showing map");
         imshow("Map", frame_);
         waitKey(1);
     }
 
+    void drawTrajectory()
+    {
+        if (trajectory_ == nullptr)
+        {
+            return ;
+        }
+
+        const double resolution = 100.0;
+        const double step_size = 1.0 / resolution;
+
+        double s = 0.0;
+        Point2 p;
+
+        while (1)
+        {
+            try
+            {
+                p = trajectory_->position(s);
+            }
+            catch (const std::exception& e)
+            {
+                break ;
+            }
+
+            setPixel(p, 255, 0, 255);
+
+            if (s >= trajectory_->length)
+            {
+                break ;
+            }
+
+            s = std::min(s + step_size, trajectory_->length);
+        }
+    }
+
+    inline void setPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b)
+    {
+        Vec3b &v = frame_.at<Vec3b>(y, x);
+        v[0] = r;
+        v[1] = g;
+        v[2] = b;
+    }
+
+    inline void setPixel(Point2 pt, uint8_t r, uint8_t g, uint8_t b)
+    {
+        setPixel(
+            (int)std::round((pt.x - map_.info.origin.position.x) / map_.info.resolution * (double)PX_CELL_SIZE), 
+            (int)std::round((pt.y - map_.info.origin.position.y) / map_.info.resolution * (double)PX_CELL_SIZE),
+            r, g, b);
+    }
+
     inline void setColor(int x, int y, uint8_t r, uint8_t g, uint8_t b)
     {
-        if (x < 0 || y < 0 || x >= frame_.cols || y >= frame_.rows)
+        if (x < 0 || y < 0 || x >= map_.info.width || y >= map_.info.height)
+        {
             return ;
+        }
 
-        Vec3b &color = frame_.at<Vec3b>(y, x);
-        color[0] = r;
-        color[1] = g;
-        color[2] = b;
+        Rect rect(3 * x, 3 * y, PX_CELL_SIZE, PX_CELL_SIZE);
+        cv::rectangle(frame_, rect, Scalar(r, g, b), FILLED);
     }
 
     inline void setColor(int x, int y, uint8_t l)
@@ -155,7 +230,10 @@ public:
 
 protected:
 
+    Mat map_viz_;
     Mat frame_;
+
+    SplinePath *trajectory_;
 
     geometry_msgs::Pose2D nav_goal_;
     bool received_nav_goal_;
@@ -174,6 +252,7 @@ protected:
     ros::Subscriber sub_map_;
     ros::Subscriber sub_path_;
     ros::Subscriber sub_robot_pose_;
+    ros::Subscriber sub_traj_;
 
 };
 

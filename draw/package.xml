@@ -53,6 +53,7 @@
   <build_depend>geometry_msgs</build_depend>
   <build_depend>image_transport</build_depend>
   <build_depend>message_generation</build_depend>
+  <build_depend>math</build_depend>
   <build_depend>nav_msgs</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
@@ -86,6 +87,7 @@
   <exec_depend>message_runtime</exec_depend>
   <exec_depend>actionlib_msgs</exec_depend>
   <exec_depend>message_generation</exec_depend>
+  <exec_depend>math</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

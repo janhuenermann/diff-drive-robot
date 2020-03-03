@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     tf
     actionlib_msgs
+    math
 )
 find_package(OpenCV REQUIRED)
 generate_messages(DEPENDENCIES
@@ -31,6 +32,7 @@ catkin_package(CATKIN_DEPENDS
     sensor_msgs
     std_msgs
     tf
+    math
 )
 
 add_executable(draw_map_cpp src/draw_map.cpp)
@@ -40,6 +42,7 @@ add_dependencies(draw_map_cpp ${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS
 target_link_libraries(draw_map_cpp
     ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
+    math
 )
 
 include_directories(
