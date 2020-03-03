@@ -322,18 +322,22 @@ void LidarMap::update_at_idx(MapIdx idx, bool occupied){
   */
   if(occupied){
     log_odds[idx.x][idx.y] = std::min(l_occ+log_odds[idx.x][idx.y],L_max);
-    if(log_odds[idx.x][idx.y]>L_THRESH){
+    if(log_odds[idx.x][idx.y]>=L_THRESH){
       occ_grid.data[idx.y*width+idx.x] = OCCUPIED;
       add_inflation(idx,true);
     }
   }else{
     log_odds[idx.x][idx.y] = std::max(l_free+log_odds[idx.x][idx.y],-L_max);
-    if(log_odds[idx.x][idx.y]<-L_THRESH){
+    if(log_odds[idx.x][idx.y]<=-L_THRESH){
       add_inflation(idx,false);
       if(occ_grid.data[idx.y*width+idx.x] != INFLATED){
         occ_grid.data[idx.y*width+idx.x] = FREE;
       }
     }
+  }
+  if(std::abs(log_odds[idx.x][idx.y])<L_THRESH){
+    occ_grid.data[idx.y*width+idx.x] = UNKNOWN;
+    add_inflation(idx,false);
   }
 }
 
