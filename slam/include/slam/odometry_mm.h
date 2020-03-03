@@ -1,4 +1,5 @@
 #include "geometry_msgs/Pose2D.h"
+#include "geometry_msgs/Twist.h"
 #include "sensor_msgs/JointState.h"
 #include "sensor_msgs/Imu.h"
 #include "ros/ros.h"
@@ -15,6 +16,7 @@ private:
   ros::Subscriber wheel_sub;    // subscribe to wheel positions
   ros::Subscriber imu_sub;    // subscribe to imu
   ros::Publisher pos_pub;       // position publisher
+  ros::Publisher vel_pub;
   float wl;                     // angle of left wheel in rad
   float wr;                     // angle of right wheel in rad
   float L = 0.16;               // Axle axle track
@@ -30,4 +32,5 @@ public:
   void callback_wheels(const sensor_msgs::JointState& msg);
   void callback_imu(const sensor_msgs::Imu& msg);
   void publish_pos();
+  void publish_vel(float wz,float vx,float vy);
 };

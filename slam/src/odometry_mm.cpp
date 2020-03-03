@@ -21,6 +21,7 @@ OdometryMM::OdometryMM(geometry_msgs::Pose2D pos_init,float wl_init ,float wr_in
     wheel_sub=nh->subscribe("joint_states",1,&OdometryMM::callback_wheels,this);
     imu_sub = nh->subscribe("imu",1,&OdometryMM::callback_imu,this);
     pos_pub = nh->advertise<geometry_msgs::Pose2D>("/robot_pose", 5);
+    vel_pub = nh->advertise<geometry_msgs::Twist>("/robot_velocity", 5);
 }
 
 void OdometryMM::callback_imu(const sensor_msgs::Imu& msg){
@@ -45,6 +46,7 @@ void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
   float dwr = wheel_r - wr;
   float omega = (2*WR/(2*L*dt))*(dwr-dwl);
   float theta_od = pos.theta;
+  float w_av;
   // MM for straight line
   if(std::abs(omega) < 3e-4){
     float v_od = ((2*WR)/(4*dt))*(dwl+dwr);
@@ -53,6 +55,7 @@ void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
     v = WEIGHT_ODOMETRY*v_od+WEIGHT_IMU*v_imu;
     pos.x += v*dt*cos(pos.theta);
     pos.y += v*dt*sin(pos.theta);
+    w_av = 0;
   }else{
     // MM for curves
     float rt = (L/2)*(dwl+dwr)/(dwr-dwl);    //turn radius
@@ -62,6 +65,8 @@ void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
     pos.x += -rt*sin(pos.theta)+rt*sin(pos.theta+dphi_av);
     pos.y += rt*cos(pos.theta)-rt*cos(pos.theta+dphi_av);
     theta_od += dphi_od;
+    v = dphi_av*rt/dt;
+    w_av = dphi_av/dt;
     //pos.theta += dphi_av;
   }
   wl = wheel_l;
@@ -83,11 +88,21 @@ void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
 
   //publish
   publish_pos();
-
+  publish_vel(w_av,v*cos(pos.theta),v*sin(pos.theta));
 }
 
 void OdometryMM::publish_pos(){
   /* Publishes the calculated position
   */
+  pos_pub.publish(pos);
+}
+
+void OdometryMM::publish_vel(float wz,float vx,float vy){
+  /* Publishes the calculated velocity
+  */
+  geometry_msgs::Twist vel;
+  vel.linear.x = vx;
+  vel.linear.y = vy;
+  vel.angular.z = wz;
   pos_pub.publish(pos);
 }
