@@ -60,6 +60,7 @@ protected:
 
     std::vector<Point2> path_;
 
+    double getDistance();
     void updateCurrentPoint();
 
 };
