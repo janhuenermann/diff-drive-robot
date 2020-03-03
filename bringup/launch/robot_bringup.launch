@@ -9,13 +9,13 @@
     <node name="slam" pkg="slam" type="node" output="screen" />
     <node name="global_planner" pkg="global_planner" type="node" output="screen" />
 
-    <node name="mission_planner" pkg="mission_planner" type="node" output="screen">
+   <!--  <node name="mission_planner" pkg="mission_planner" type="node" output="screen">
         <param name="goals" type="string" value="$(arg goals)" />
         <param name="start_pos" type="string" value="$(arg start_pos)" />
-    </node>
+    </node> -->
 
     <group if="$(arg debug)">
-        <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 1 1" output="screen" />
+        <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 0 0.5" output="screen" />
         <node name="show_map" pkg="draw" type="node" output="screen" />
     </group>
 
