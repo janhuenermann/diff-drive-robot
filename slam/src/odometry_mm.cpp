@@ -16,7 +16,7 @@ OdometryMM::OdometryMM(geometry_msgs::Pose2D pos_init,float wl_init ,float wr_in
   a(0),
   w(0)
   {
-    t = ros::Time::now().toSec();
+    t=ros::Time::now().toSec();
     // initialize subscribers and publishers
     wheel_sub=nh->subscribe("/joint_states",1,&OdometryMM::callback_wheels,this);
     imu_sub = nh->subscribe("/imu",1,&OdometryMM::callback_imu,this);
@@ -39,6 +39,12 @@ void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
   Parameters:
       msg       Output of wheel encoder
   */
+  // sometimes it takes a while for the time object to initialize
+  if(t==0){
+    ROS_INFO("waiting for Odometry to start");
+    t = ros::Time::now().toSec();
+    return;
+  }
   float dt = ros::Time::now().toSec()-t;
   float wheel_l = msg.position[1];
   float wheel_r = msg.position[0];
