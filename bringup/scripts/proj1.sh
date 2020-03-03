@@ -8,7 +8,7 @@ export GOALS="-4.0,-6.0|-2.5,-1.0|-9.0,1.5"
 export X_POS="-8.9"
 export Y_POS="-8.7"
 export WORLD="world1"
-export CELL_SIZE="0.1"
+export CELL_SIZE="0.05"
 export MIN_POS="-11.0,-11.0"
 export MAX_POS="11.0,11.0"
 roslaunch bringup robot_bringup.launch
