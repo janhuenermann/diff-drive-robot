@@ -1,78 +1,47 @@
 #include <local_planner/trajectory.hpp>
 
 
-void Trajectory::update(std::vector<Point2> path, Point2 robot_pos, Point2 robot_vel)
+void Trajectory::update(std::vector<Point2> path, Point2 robot_vel)
 {
     if (spline_ != nullptr)
     {
         delete spline_;
+        spline_ = nullptr;
     }
 
-    s_ = 0.0; // pretend to be at the beginning of our new spline, for calculating the step size
+    if (path.size() < 2)
+    {
+        s_ = 0;
+        has_path_ = false;
+        is_at_end_ = true;
+        return ;
+    }
+
+    spline_ = SplinePath::fitCardinal(1.0, path, robot_vel * 0.5, Point2(0, 0));
+    
+    s_ = dist_;
+    is_at_end_ = false;
     has_path_ = true;
-    at_end_ = false;
-    path_ = path;
-    spline_ = SplinePath::fitCardinal(0.0, path, robot_vel, Point2(0, 0));
-
-    // figure out our next point on the spline
-    double ds = getStepSize();
-
-    if (n_ > 0)
-    {
-        // avoid drift if we update the trajectory often
-        double dist = (robot_pos - next_point_).norm<double>();
-        s_ = std::max(0.0, std::min(ds, dist));
-    }
-    else
-    {
-        // first spline, set to step size
-        s_ = std::min(0.1, spline_->length);
-    }
-
-    next(false);
 }
 
-void Trajectory::next(bool move)
+Point2 Trajectory::nextPoint(Point2 robot_pos)
 {
-    if (!has_path_)
+    assert(hasPath());
+    
+    while (!isAtEnd() && (current_point_ - robot_pos).norm<double>() < dist_)
     {
-        throw std::invalid_argument("trajectory does not contain path");
+        s_ += step_size_;
+
+        if (s_ >= spline_->length)
+        {
+            is_at_end_ = true;
+            s_ = spline_->length;
+        }
+
+        current_point_ = spline_->position(s_);
     }
 
-    if (at_end_)
-    {
-        return ;
-    }
-
-    if (s_ > spline_->length)
-    {
-        s_ = spline_->length;
-        next_point_ = spline_->position(s_);
-        at_end_ = true;
-
-        reset();
-
-        return ;
-    }
-
-    if (move)
-    {
-        s_ += getStepSize();
-    }
-
-    next_point_ = spline_->position(s_);
-    n_++;
-}
-
-void Trajectory::reset()
-{
-    n_ = 0;
-}
-
-double Trajectory::getStepSize()
-{
-    // TODO: v as function of spline derivative magnitude
-    return v_ * dt_;
+    return current_point_;
 }
 
 double Trajectory::getRemainingPathLength()

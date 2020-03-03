@@ -44,7 +44,7 @@ void PIDController::update(double &linear_vel, double &angular_vel)
 
     Vec2 err(err_pos, err_ang);
 
-    ROS_INFO("dx: %.3lf, dy: %.3lf", delta.x, delta.y);
+    // ROS_INFO("dx: %.3lf, dy: %.3lf", delta.x, delta.y);
     // ROS_INFO("Error: %.4lf; %.4lf; %.4lf", angle_target, angle_true_, err_ang);
 
     Vec2 p_term = p_ * err;

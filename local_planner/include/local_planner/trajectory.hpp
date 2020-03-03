@@ -6,59 +6,59 @@
 #include <math/vector2.hpp>
 #include <math/spline.hpp>
 
+// fit and follow a spline
+// (try to) keep constant distance to point that is controlled
 class Trajectory
 {
 
 public:
 
-    Trajectory(double v = 0.0, double F = 1.0) : n_(0), s_(0.0), at_end_(true), has_path_(false)
+    Trajectory() : s_(0.0), is_at_end_(true), has_path_(false)
     {
-        setVelocity(v);
-        setFrequency(F);
     }
+
+    inline void setDistance(double dist) { dist_ = dist; }
+    inline void setStepSize(double step_size) { step_size_ = step_size; }
 
     inline bool hasPath()
     {
         return has_path_;
     };
 
-    inline Point2 getNextTargetPoint()
+    inline SplinePath *getSplinePath()
     {
-        return next_point_;
-    };
+        assert(hasPath());
+        return spline_;
+    }
 
-    inline void setFrequency(double F)
+    inline bool isAtEnd()
     {
-        dt_ = 1.0 / F;
-    };
+        return is_at_end_;
+    }
 
-    inline void setVelocity(double v)
-    {
-        v_ = v;
-    };
+    // gets next point on trajectory that is at least dist_ distance away
+    // if not at the end of the trajectory
+    Point2 nextPoint(Point2 robot_pos);
 
+    // update trajectory
+    void update(std::vector<Point2> path, Point2 robot_vel);
+
+    // returns the length of the path after the current point
     double getRemainingPathLength();
-
-    void next(bool move = true);
-    void update(std::vector<Point2> path, Point2 robot_pos, Point2 robot_vel);
 
 protected:
 
-    Point2 next_point_;
+    Point2 current_point_;
     
-    double dt_;
-    double v_;
+    double dist_;
+    double step_size_;
 
     SplinePath *spline_;
-    int n_;
     double s_;
-    bool at_end_;
     bool has_path_;
+    bool is_at_end_;
 
     std::vector<Point2> path_;
-
-    double getStepSize();
-    void reset();
 
 };
 
