@@ -25,7 +25,7 @@
 
 
     <group if="$(arg debug)">
-        <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 4 2" output="screen" />
+        <!-- <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 4 2" output="screen" /> -->
         <node name="show_map" pkg="draw" type="node" output="screen" />
     </group>
 
