@@ -18,7 +18,7 @@ public:
         received_robot_pose_(false),
         received_nav_goal_(false)
     {
-        const double freq = 2.0;
+        const double freq = 5.0;
 
         sub_occ_grid_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &PlannerNode::mapCallback, this);
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &PlannerNode::robotPoseCallback, this);
@@ -150,7 +150,6 @@ protected:
     ros::Subscriber sub_robot_pose_;
 
     ros::Timer tick_timer_;
-
 
     std::vector<Index2> path_;
 
