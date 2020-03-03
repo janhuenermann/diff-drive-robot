@@ -27,7 +27,6 @@ public:
     void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
     {
         map_ = *msg;
-        ROS_INFO("Received map");
 
         if (frame_.cols != map_.info.width || frame_.rows != map_.info.height)
         {
@@ -41,8 +40,6 @@ public:
 
     void robotPoseCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
     {
-      ROS_INFO("Received pose");
-
         robot_pose_ = *msg;
         received_pose_ = true;
         draw();
@@ -50,8 +47,6 @@ public:
 
     void goalCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
     {
-      ROS_INFO("Received goal");
-
         nav_goal_ = *msg;
         received_nav_goal_ = true;
         draw();
@@ -59,8 +54,6 @@ public:
 
     void navigationCallback(const nav_msgs::Path::ConstPtr& msg)
     {
-      ROS_INFO("Received path");
-
         planned_path_ = *msg;
         received_path_ = true;
         draw();
@@ -69,7 +62,9 @@ public:
     void draw()
     {
         if (!received_map_)
+        {
             return ;
+        }
 
         const int w = map_.info.width;
         const int h = map_.info.height;
@@ -100,16 +95,16 @@ public:
                 }
             }
         }
+
         if (received_path_)
         {
-            assert(planned_path_.poses.size() >= 2); // start and end point
-
             for (int k = 1; k < planned_path_.poses.size()-1; ++k)
             {
                 geometry_msgs::PoseStamped& pose_stamped = planned_path_.poses[k];
                 setColor(pose_stamped.pose.position, 0, 0, 255);
             }
         }
+
         if (received_pose_)
         {
             setColor(robot_pose_, 255, 0, 0);
@@ -127,6 +122,9 @@ public:
 
     inline void setColor(int x, int y, uint8_t r, uint8_t g, uint8_t b)
     {
+        if (x < 0 || y < 0 || x >= frame_.cols || y >= frame_.rows)
+            return ;
+
         Vec3b &color = frame_.at<Vec3b>(y, x);
         color[0] = r;
         color[1] = g;
