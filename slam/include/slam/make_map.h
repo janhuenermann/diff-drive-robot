@@ -6,6 +6,7 @@
 #include <vector>
 #include <set>
 #include "math.h"
+#include "ros/time.h"
 
 // Constants used to fill occupancy grid
 const int UNKNOWN = -1;

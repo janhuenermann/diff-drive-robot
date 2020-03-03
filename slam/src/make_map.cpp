@@ -57,15 +57,16 @@ cell_size(c_size)
 }
 
 void LidarMap::callback_scan(const sensor_msgs::LaserScan& msg){
-/* Gets information from new LIDAR scan
-Parameters:
-msg       Output of laser scan
-*/
-    std::vector<float> ranges = msg.ranges;
-// Scan is 360 degrees
-    for(int i=0;i<360;i++){
-        MapIdx end_idx(0,0);
-        geometry_msgs::Pose2D end_pos;
+  /* Gets information from new LIDAR scan
+  Parameters:
+      msg       Output of laser scan
+  */
+  ros::WallTime t_start = ros::WallTime::now();
+ std::vector<float> ranges = msg.ranges;
+ // Scan is 360 degrees
+ for(int i=0;i<360;i++){
+   MapIdx end_idx(0,0);
+   geometry_msgs::Pose2D end_pos;
 
         bool obstacle_found = ranges[i] != INFINITY;
         float range = obstacle_found ? ranges[i] : max_range;
@@ -86,12 +87,16 @@ msg       Output of laser scan
             }
         }
 
-        if(obstacle_found && idx_in_map(end_idx)){
-            update_at_idx(end_idx, true);
-        }
-    }
-// publish the new grid
-    publish_grid();
+   if(obstacle_found && idx_in_map(end_idx)){
+    update_at_idx(end_idx, true);
+   }
+ }
+ // publish the new grid
+ publish_grid();
+
+ ros::WallTime t_end = ros::WallTime::now();
+ double dt = (t_end - t_start).toNSec()*1e-6;
+ ROS_INFO("time for scan %f ms",dt);
 }
 
 void LidarMap::callback_pos(const geometry_msgs::Pose2D& msg){
