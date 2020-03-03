@@ -3,7 +3,7 @@
 
 #include "ros/ros.h"
 
-#include <global_planner/math.hpp>
+#include <math/vector2.hpp>
 
 class PIDController
 {

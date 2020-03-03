@@ -1,4 +1,4 @@
-#include <local_planner/spline.hpp>
+#include <math/spline.hpp>
 #include <cassert>
 #include <array>
 
@@ -118,7 +118,7 @@ const Spline& SplinePath::select(double ss, double &t) const
 
     for (const Spline &sp : children)
     {
-        if (_ss - sp.length < 0.0)
+        if (_ss - sp.length <= 0.0)
         {
             t = ss / sp.length;
             return sp;

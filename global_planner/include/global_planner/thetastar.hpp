@@ -5,8 +5,8 @@
  * Author: Jan Huenermann <jan@huenermann.de>
  */
 
+#include <math/vector2.hpp>
 #include <global_planner/astar.hpp>
-#include <global_planner/math.hpp>
 
 namespace ThetaStar
 {

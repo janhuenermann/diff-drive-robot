@@ -1,9 +1,10 @@
 #ifndef SPLINE_H
 #define SPLINE_H
 
-#include <global_planner/math.hpp>
 #include <vector>
 #include <cstring>
+
+#include <math/vector2.hpp>
 
 struct Spline
 {

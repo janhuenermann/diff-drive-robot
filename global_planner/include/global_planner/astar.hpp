@@ -8,9 +8,8 @@
 #include <vector>
 #include <iostream>
 
+#include <math/vector2.hpp>
 #include <global_planner/queue/fibonacci_queue.hpp>
-#include <global_planner/math.hpp>
-
 
 namespace AStar
 {

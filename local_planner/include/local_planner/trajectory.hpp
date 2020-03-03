@@ -3,8 +3,8 @@
 
 #include "ros/ros.h"
 
-#include <global_planner/math.hpp>
-#include <local_planner/spline.hpp>
+#include <math/vector2.hpp>
+#include <math/spline.hpp>
 
 class Trajectory
 {

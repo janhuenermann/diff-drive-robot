@@ -5,7 +5,6 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
 
-#include <local_planner/spline.hpp>
 #include <local_planner/pid_controller.hpp>
 #include <local_planner/trajectory.hpp>
 
@@ -17,10 +16,10 @@ public:
         nh_()
     {
         // PID params
-        const double p_pos = 1.0, i_pos = 0.1, d_pos = 0.1;
-        const double p_ang = 1.0, i_ang = 0.1, d_ang = 0.1;
+        const double p_pos = 0.1, i_pos = 0.00, d_pos = 0.0;
+        const double p_ang = 0.2, i_ang = 0.00, d_ang = 0.0;
 
-        const double vel = 0.5;
+        const double vel = 0.05;
         const double freq = 50.0;
 
         traj_.setVelocity(vel);
@@ -35,6 +34,8 @@ public:
         sub_path_ = nh_.subscribe<nav_msgs::Path>("/navigation/path", 1, &ControllerNode::pathCallback, this);
     
         tick_timer_ = nh_.createTimer(ros::Duration(1.0 / freq), &ControllerNode::tickCallback, this);
+        
+        ROS_INFO("Controller node booted.");
     }
 
     void robotTwistCallback(const geometry_msgs::Twist::ConstPtr& msg)
@@ -68,6 +69,11 @@ public:
             path.push_back(Point2(pt.pose.position.x, pt.pose.position.y));
         }
 
+        if (traj_.hasPath())
+        {
+            return ;
+        }
+
         // update our trajectory
         traj_.update(path, robot_position_, robot_velocity_);
 
@@ -84,6 +90,8 @@ public:
         double linear_vel, angular_vel;
 
         Point2 intermediate_point = traj_.getNextTargetPoint();
+
+        ROS_INFO("Next point x: %.3lf, y: %.3lf", intermediate_point.x, intermediate_point.y);
 
         pid_.setTargetPosition(intermediate_point);
         pid_.update(linear_vel, angular_vel);
@@ -121,6 +129,8 @@ int main(int argc, char **argv){
   // Init Ros
   ros::init(argc,argv, "controller_node");
   ros::NodeHandle n;
+
+  ControllerNode node;
 
   ros::spin();
   return 0;
