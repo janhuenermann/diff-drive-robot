@@ -1,4 +1,8 @@
-source ~/ws/devel/setup.bash
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $DIR/../../../devel/setup.bash
+
 # all environment variables MUST NOT contain spaces
 export GOALS="-4.0,-6.0|-2.5,-1.0|-9.0,1.5"
 export X_POS="-8.9"
