@@ -21,7 +21,7 @@ private:
   float wr;                     // angle of right wheel in rad
   float L = 0.16;               // Axle axle track
   float WR = 0.066/2;           // Wheel radius
-  double t;                      // current ros time in seconds
+  ros::WallTime t;                      // current ros time in seconds
   double a;                         // current acceleration
   double v;                         // current speed
   double compass;                 // angle output of compas
