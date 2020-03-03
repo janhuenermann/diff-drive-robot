@@ -32,5 +32,5 @@ public:
   void callback_wheels(const sensor_msgs::JointState& msg);
   void callback_imu(const sensor_msgs::Imu& msg);
   void publish_pos();
-  void publish_vel(float wz,float vx,float vy);
+  void publish_vel(float wz,float v);
 };

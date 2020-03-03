@@ -18,8 +18,8 @@ OdometryMM::OdometryMM(geometry_msgs::Pose2D pos_init,float wl_init ,float wr_in
   {
     t = ros::Time::now().toSec();
     // initialize subscribers and publishers
-    wheel_sub=nh->subscribe("joint_states",1,&OdometryMM::callback_wheels,this);
-    imu_sub = nh->subscribe("imu",1,&OdometryMM::callback_imu,this);
+    wheel_sub=nh->subscribe("/joint_states",1,&OdometryMM::callback_wheels,this);
+    imu_sub = nh->subscribe("/imu",1,&OdometryMM::callback_imu,this);
     pos_pub = nh->advertise<geometry_msgs::Pose2D>("/robot_pose", 5);
     vel_pub = nh->advertise<geometry_msgs::Twist>("/robot_velocity", 5);
 }
@@ -88,7 +88,7 @@ void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
 
   //publish
   publish_pos();
-  publish_vel(w_av,v*cos(pos.theta),v*sin(pos.theta));
+  publish_vel(w_av,v);
 }
 
 void OdometryMM::publish_pos(){
@@ -97,12 +97,11 @@ void OdometryMM::publish_pos(){
   pos_pub.publish(pos);
 }
 
-void OdometryMM::publish_vel(float wz,float vx,float vy){
+void OdometryMM::publish_vel(float wz,float v){
   /* Publishes the calculated velocity
   */
   geometry_msgs::Twist vel;
-  vel.linear.x = vx;
-  vel.linear.y = vy;
+  vel.linear.x = v;
   vel.angular.z = wz;
-  pos_pub.publish(pos);
+  vel_pub.publish(vel);
 }
