@@ -148,7 +148,7 @@ bool LazySearch::updateVertex(Node *node, Node *neighbor)
     return relax(node->parent, neighbor);
 }
 
-bool LazySearch::setVertex(Node *node)
+bool LazySearch::setVertexShouldSkip(Node *node)
 {
     if (node->parent == nullptr)
     {
@@ -175,7 +175,7 @@ bool LazySearch::setVertex(Node *node)
 
                 Node *neighbor = getNodeAt(bx+i, by+j);
 
-                if (!neighbor->visited)
+                if (!neighbor->visited || neighbor->run != current_run_)
                 {
                     continue ;
                 }

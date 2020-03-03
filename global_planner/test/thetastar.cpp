@@ -9,7 +9,7 @@ TEST(ThetaStarTest, testPathFindingSimple)
 
     for (int k = 0; k < W-1; ++k)
     {
-        algo->getNodeAt(k, (H-1) / 2)->state = 1;
+        algo->setOccupied(k, (H-1) / 2, true);
     }
 
     std::vector<Index2> path = algo->search(Index2(0, 0), Index2(0, H-1));
@@ -39,7 +39,7 @@ TEST(ThetaStarTest, testPathFindingHard)
             // color[1] = 255;
             // color[2] = 255;
 
-            algo->getNodeAt(j, k)->state = 1;
+            algo->setOccupied(j, k, true);
         }
     }
 

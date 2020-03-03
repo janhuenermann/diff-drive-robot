@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include <global_planner/data_structures/fibonacci_heap.hpp>
-#include <global_planner/data_structures/fibonacci_queue.hpp>
+#include <global_planner/queue/fibonacci_heap.hpp>
+#include <global_planner/queue/fibonacci_queue.hpp>
 
 TEST(FibonacciHeapTest, testInsert){
     int a = 1;

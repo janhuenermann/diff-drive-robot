@@ -18,7 +18,7 @@ public:
         received_robot_pose_(false),
         received_nav_goal_(false)
     {
-        const double freq = 5.0;
+        const double freq = 20.0;
 
         sub_occ_grid_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &PlannerNode::mapCallback, this);
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &PlannerNode::robotPoseCallback, this);
@@ -90,13 +90,13 @@ public:
         map_resolution_ = (double)msg->info.resolution;
         map_origin_ = Point2(msg->info.origin.position.x, msg->info.origin.position.y);
 
-        // copy data
+        uint8_t *occ = algorithm_->getOccupancyData();
+
         for (int j = 0; j < h; ++j)
         {
             for (int i = 0; i < w; ++i)
             {
-                bool is_free_or_unknown = msg->data[i + j * w] <= 0;
-                algorithm_->getNodeAt(i, j)->traversable = is_free_or_unknown; // row-major order
+                occ[i + j * w] = msg->data[i + j * w] > 0 ? 1 : 0; // row-major order
             }
         }
     }
@@ -154,6 +154,8 @@ protected:
     std::vector<Index2> path_;
 
     ros::Time last_update_stamp_;
+
+    uint8_t nav_occ_;
 
 };
 

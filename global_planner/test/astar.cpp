@@ -8,7 +8,7 @@ TEST(AStarTest, testPathFindingSimple)
 
     for (int k = 0; k < W-1; ++k)
     {
-        algo->getNodeAt(k, 1)->state = 1;
+        algo->setOccupied(k, 1, true);
     }
 
     std::vector<Index2> path = algo->search(Index2(0, 0), Index2(0, 2));
@@ -39,7 +39,7 @@ TEST(AStarTest, testPathFindingHard)
 
         for (int j = m-1-l; j < m+l; ++j)
         {
-            algo->getNodeAt(j, k)->state = 1;
+            algo->setOccupied(j, k, true);
         }
     }
 

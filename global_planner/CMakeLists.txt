@@ -124,7 +124,6 @@ include_directories(
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
-  src/${PROJECT_NAME}/global_planner.cpp
   src/${PROJECT_NAME}/astar.cpp
   src/${PROJECT_NAME}/thetastar.cpp
 )

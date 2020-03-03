@@ -25,9 +25,9 @@ namespace ThetaStar
         inline bool isTraversableSwapped(Index2 i, bool axes_swapped)
         {
             if (axes_swapped)
-                return grid_[i.x * width_ + i.y]->traversable;
+                return occupancy_[i.x * width_ + i.y] == 0;
             else
-                return grid_[i.y * width_ + i.x]->traversable;
+                return occupancy_[i.y * width_ + i.x] == 0;
         };
 
         virtual bool shouldPrune(Node *a, Node *b, Node *c)
@@ -43,7 +43,7 @@ namespace ThetaStar
         LazySearch(int w, int h) : Search(w, h) {}
     protected:
         virtual bool updateVertex(Node *node, Node *neighbor);
-        virtual bool setVertex(Node *node);
+        virtual bool setVertexShouldSkip(Node *node);
     };
 };
 // 

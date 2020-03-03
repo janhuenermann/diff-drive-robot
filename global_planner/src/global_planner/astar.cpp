@@ -1,13 +1,16 @@
 #include <global_planner/astar.hpp>
 
 #include <stack>
+#include "ros/ros.h"
 
 using namespace AStar;
 
 Search::Search(int width, int height) :
     grid_(nullptr),
     width_(0),
-    height_(0)
+    height_(0),
+    occupancy_(nullptr),
+    current_run_(0)
 {
     resize(width, height);
 }
@@ -30,23 +33,32 @@ void Search::resize(int width, int height)
             getNodeAt(i, j) = new Node(i, j);
         }
     }
+
+    if (occupancy_ != nullptr)
+    {
+        free(occupancy_);
+        occupancy_ = nullptr;
+    }
+
+    if (width != 0 && height != 0)
+    {
+        occupancy_ = (uint8_t *)calloc(width * height, sizeof(uint8_t));
+    }
 }
 
 std::vector<Index2> Search::search(Index2 start, Index2 target)
 {
     std::vector<Index2> path;
 
-    // reset costs
-
-    for (int j = 0; j < height_; ++j)
+    if (!isTraversable(start) || !isTraversable(target))
     {
-        for (int i = 0; i < width_; ++i)
-        {
-            getNodeAt(i, j)->reset(target);
-        }
+        return path;
     }
 
+    current_run_ += 1; // unique id for this run
+
     Node*& start_node = getNodeAt(start);
+    start_node->reset(target, current_run_);
     start_node->cost.setGCost(0);
 
     queue_.clear();
@@ -61,8 +73,7 @@ std::vector<Index2> Search::search(Index2 start, Index2 target)
             continue ;
         }
 
-        bool skip = setVertex(node);
-        if (skip)
+        if (setVertexShouldSkip(node))
         {
             continue ;
         }
@@ -94,13 +105,13 @@ std::vector<Index2> Search::search(Index2 start, Index2 target)
 
         node->visited = true;
 
-        findSuccessors(node);
+        findSuccessors(node, target);
     }
 
     return path;
 }
 
-void Search::findSuccessors(Node *node)
+void Search::findSuccessors(Node *node, Index2 target)
 {
     bool lower_cost;
     int bx = node->index.x, by = node->index.y;
@@ -117,6 +128,11 @@ void Search::findSuccessors(Node *node)
 
 
             Node*& neighbor = getNodeAt(bx+i, by+j);
+
+            if (neighbor->run != current_run_)
+            {
+                neighbor->reset(target, current_run_);
+            }
 
             if (!isTraversable(neighbor) || neighbor->visited)
             {

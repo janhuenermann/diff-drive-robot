@@ -39,7 +39,7 @@ namespace AStar
             return Cost(-g, -h);
         }
 
-        virtual void reset(Index2 pos, Index2 target)
+        inline void reset(Index2 pos, Index2 target)
         {
             h = (pos - target).norm<double>(); // Distance::octileDistance(cur, goal);
             g = std::numeric_limits<double>::infinity();
@@ -51,26 +51,26 @@ namespace AStar
     {
         Index2 index;
 
-        bool traversable;
-
         Cost cost;
         bool visited;
         Node *parent;
+        int run;
 
         Node(int x, int y) :
             Element(),
             index(Index2(x, y)),
             cost(),
-            visited(false), parent(nullptr), traversable(true)
-        {
-        }
+            visited(false), parent(nullptr),
+            run(0)
+        {}
 
-        void reset(Index2 target)
+        inline void reset(Index2 target, int _run)
         {
             visited = false;
             parent = nullptr;
+            run = _run;
             cost.reset(index, target);
-        }
+        };
     };
 
     class Search
@@ -101,11 +101,26 @@ namespace AStar
             return grid_[y * width_ + x];
         }
 
+        inline uint8_t *getOccupancyData()
+        {
+            return occupancy_;
+        }
+
+        inline void swapOccupancyData(uint8_t *data)
+        {
+            occupancy_ = data;
+        }
+
+        inline void setOccupied(int x, int y, bool occupied)
+        {
+            occupancy_[y * width_ + x] = occupied ? 1 : 0;
+        }
+
     protected:
 
         inline bool isTraversable(Node *n)
         {
-            return n->traversable;
+            return isTraversable(n->index);
         }
 
         inline bool isTraversable(Index2 i)
@@ -115,11 +130,13 @@ namespace AStar
                 return false;
             }
 
-            return isTraversable(getNodeAt(i));
+            return occupancy_[i.y * width_ + i.x] == 0;
         }
 
-        virtual void findSuccessors(Node *node);
-        virtual bool setVertex(Node *node) { return false; };
+        void introduce(Node *node);
+
+        virtual void findSuccessors(Node *node, Index2 target);
+        virtual bool setVertexShouldSkip(Node *node) { return false; };
         virtual bool shouldPrune(Node *a, Node *b, Node *c) { return false; };
 
         /**
@@ -141,10 +158,15 @@ namespace AStar
          */
         virtual bool relax(Node *node, Node *neighbor);
 
+        uint8_t *occupancy_;
+
         Node **grid_;
         FibonacciQueue<Cost>::Container<Node> queue_;
 
         int width_, height_;
+
+        Index2 target_;
+        int current_run_;
     };
 
     inline bool operator <(const Cost& a, const Cost& b)
