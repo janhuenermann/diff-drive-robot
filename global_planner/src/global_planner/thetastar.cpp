@@ -50,7 +50,7 @@ bool Search::hasLineOfSight(Node *a, Node *b)
     double lambda = std::abs(dls.y / dls.x) * (0.5 + (_ls.x - ls.x) * sgn_l) - 0.5;
     double lambda_;
 
-    Index2 cur;
+    Index2 cur, cur_a, cur_b;
 
     while (ls != ls_f)
     {
@@ -66,47 +66,58 @@ bool Search::hasLineOfSight(Node *a, Node *b)
 
             if (lambda_ < lambda)
             {
-                cur = Index2(ls.x, ls.y - sgn_s);
+                cur.x = ls.x;
+                cur.y = ls.y - sgn_s;
 
                 if (cur == ls_f)
+                {
                     break ;
+                }
 
                 if (!isTraversableSwapped(cur, should_swap))
+                {
                     return false;
+                }
             }
             else if (lambda_ > lambda)
             {
-                cur = Index2(ls.x - sgn_l, ls.y);
+                cur.x = ls.x - sgn_l;
+                cur.y = ls.y;
 
                 if (cur == ls_f)
+                {
                     break ;
+                }
 
                 if (!isTraversableSwapped(cur, should_swap))
+                {
                     return false;
+                }
             }
             else // corner point
             {
-                cur = Index2(ls.x - sgn_l, ls.y);
+                cur_a.x = ls.x - sgn_l;
+                cur_a.y = ls.y;
 
-                if (cur == ls_f)
+                cur_b.x = ls.x;
+                cur_b.y = ls.y - sgn_s;
+
+                if ((cur_a == ls_f) || (cur_b == ls_f))
+                {
                     break ;
+                }
 
-                corner_traversable = isTraversableSwapped(cur, should_swap);
-                cur = Index2(ls.x, ls.y - sgn_s);
-
-                if (cur == ls_f)
-                    break ;
-
-                if (corner_traversable)
-                    continue ;
-
-                if (!isTraversableSwapped(cur, should_swap))
+                if (!isTraversableSwapped(cur_a, should_swap) && !isTraversableSwapped(cur_b, should_swap))
+                {
                     return false;
+                }
             }
         }
 
         if (!isTraversableSwapped(ls, should_swap))
+        {
             return false;
+        }
     }
 
     return true;

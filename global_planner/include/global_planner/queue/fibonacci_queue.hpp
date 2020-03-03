@@ -5,7 +5,7 @@
  * Author: Jan Huenermann <jan@huenermann.de>
  */
 
-#include <global_planner/data_structures/fibonacci_heap.hpp>
+#include <global_planner/queue/fibonacci_heap.hpp>
 
 #include <cassert>
 

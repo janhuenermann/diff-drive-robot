@@ -53,6 +53,43 @@ struct Vector2
         return Vector2<V>(static_cast<V>(std::round(x)), static_cast<V>(std::round(y)));
     }
 
+    inline Vector2<T>& operator += (const Vector2<T>& v)
+    {
+        x += v.x;
+        y += v.y;
+
+        return *this;
+    };
+
+    inline Vector2<T>& operator += (const T& v)
+    {
+        x += v;
+        y += v;
+
+        return *this;
+    };
+
+    inline Vector2<T>& operator -= (const Vector2<T>& v)
+    {
+        x -= v.x;
+        y -= v.y;
+
+        return *this;
+    };
+
+    inline Vector2<T>& operator -= (const T& v)
+    {
+        x -= v;
+        y -= v;
+
+        return *this;
+    };
+
+    inline double atan2()
+    {
+        return std::atan2(y, x);
+    };
+
 };
 
 template<class T>
@@ -111,6 +148,7 @@ inline std::ostream& operator<<(std::ostream &strm, const Vector2<T> &a)
 
 typedef Vector2<int> Index2;
 typedef Vector2<double> Point2;
+typedef Vector2<double> Vec2;
 
 
 /**
