@@ -96,7 +96,7 @@ void LidarMap::callback_scan(const sensor_msgs::LaserScan& msg){
 
  ros::WallTime t_end = ros::WallTime::now();
  double dt = (t_end - t_start).toNSec()*1e-6;
- ROS_INFO("time for scan %f ms",dt);
+ // ROS_INFO("time for scan %f ms",dt);
 }
 
 void LidarMap::callback_pos(const geometry_msgs::Pose2D& msg){
@@ -329,7 +329,6 @@ occupied      true if the cell is beliefed to be occupide, false else
 
     int old_state = get_state(idx);
     float old_val = log_odds[idx.x][idx.y];
-
     float new_val = old_val + (occupied ? l_occ : l_free);
     new_val = std::min(L_max, std::max(-L_max, new_val));
 

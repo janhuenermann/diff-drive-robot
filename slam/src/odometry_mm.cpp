@@ -105,7 +105,7 @@ void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
 
   ros::WallTime t_end = ros::WallTime::now();
   double t_mm = (t_end - start_t).toNSec()*1e-6;
-  ROS_INFO("time for motion model: %f ms",t_mm);
+  // ROS_INFO("time for motion model: %f ms",t_mm);
 }
 
 void OdometryMM::publish_pos(){

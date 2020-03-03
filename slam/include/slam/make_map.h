@@ -30,10 +30,10 @@ private:
   float max_range = 3.5;          // maximal range of LIDAR
   float inflation_radius;         // radius added to obstacle to avoid robot touching them
   // log odds parameters
-  float l_occ = 0.1;
+  float l_occ = 0.2;
   float l_free = -0.1;
-  float L_THRESH = 0.3;
-  float L_max = 20;
+  float L_THRESH = 0.4;
+  float L_max = 4;
   // Map info
   geometry_msgs::Pose2D min_pos;
   float cell_size;
