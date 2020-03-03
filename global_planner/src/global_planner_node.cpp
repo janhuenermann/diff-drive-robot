@@ -18,10 +18,14 @@ public:
         received_robot_pose_(false),
         received_nav_goal_(false)
     {
+        const double freq = 2.0;
+
         sub_occ_grid_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &PlannerNode::mapCallback, this);
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &PlannerNode::robotPoseCallback, this);
         sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/goal", 1, &PlannerNode::goalCallback, this);
         pub_path_ = nh_.advertise<nav_msgs::Path>("/navigation/path", 10);
+
+        tick_timer_ = nh_.createTimer(ros::Duration(1.0 / freq), &PlannerNode::tickCallback, this);
 
         ROS_INFO("Booted planner node");
     }
@@ -46,10 +50,7 @@ public:
         Index2 start = getIndexFromPosition(robot_position_);
         Index2 target = getIndexFromPosition(goal_);
 
-        ROS_DEBUG("Starting path planning");
         path_ = algorithm_->search(start, target);
-        ROS_DEBUG("Finished path planning");
-
         publishPath();
     }
 
@@ -105,7 +106,6 @@ public:
         last_update_stamp_ = msg->header.stamp;
         updateMap(msg);
         received_map_ = true;
-        findPath();
     }
 
     void robotPoseCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
@@ -114,7 +114,6 @@ public:
         robot_position_ = Point2(msg->x, msg->y);
         robot_angle_ = msg->theta;
         received_robot_pose_ = true;
-        findPath();
     }
 
     void goalCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
@@ -122,6 +121,10 @@ public:
         last_update_stamp_ = ros::Time::now();
         goal_ = Point2(msg->x, msg->y);
         received_nav_goal_ = true;
+    }
+
+    void tickCallback(const ros::TimerEvent& evt)
+    {
         findPath();
     }
 
@@ -145,6 +148,9 @@ protected:
     ros::Subscriber sub_goal_;
     ros::Subscriber sub_occ_grid_;
     ros::Subscriber sub_robot_pose_;
+
+    ros::Timer tick_timer_;
+
 
     std::vector<Index2> path_;
 
