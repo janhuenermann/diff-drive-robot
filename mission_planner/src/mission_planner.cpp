@@ -27,8 +27,6 @@ void MissionPlanner::callback_pos(const geometry_msgs::Pose2D& msg){
       current_goal++;
     }
   }
-  ROS_INFO("idx:%d",current_goal);
-  ROS_INFO("size:%d",(int)goals.size());
   publish_goal();
 }
 
