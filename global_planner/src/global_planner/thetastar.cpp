@@ -168,14 +168,14 @@ bool LazySearch::setVertexShouldSkip(Node *node)
             for (int j = -1; j <= 1; ++j)
             {
                 if ((i == 0 && j == 0) ||
-                    bx+i < 0 || bx+i >= width_ || by+j < 0 || by+j >= height_)
+                    bx+i < 0 || bx+i >= grid_->width || by+j < 0 || by+j >= grid_->height)
                 {
                     continue ;
                 }
 
-                Node *neighbor = getNodeAt(bx+i, by+j);
+                Node *neighbor = grid_->getNodeAt(bx+i, by+j);
 
-                if (!neighbor->visited || neighbor->run != current_run_)
+                if (!neighbor->visited || neighbor->run != grid_->run)
                 {
                     continue ;
                 }

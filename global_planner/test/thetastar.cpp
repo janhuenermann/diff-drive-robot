@@ -5,11 +5,14 @@
 TEST(ThetaStarTest, testPathFindingSimple)
 {
     int W = 5, H = 5;
-    ThetaStar::LazySearch *algo = new ThetaStar::LazySearch(W, H);
+
+    NodeGrid grid(W, H);
+
+    ThetaStar::LazySearch *algo = new ThetaStar::LazySearch(&grid);
 
     for (int k = 0; k < W-1; ++k)
     {
-        algo->setOccupied(k, (H-1) / 2, true);
+        grid.setOccupied(k, (H-1) / 2, true);
     }
 
     std::vector<Index2> path = algo->search(Index2(0, 0), Index2(0, H-1));
@@ -26,8 +29,10 @@ TEST(ThetaStarTest, testPathFindingHard)
     int m = 20;
     int W = 2*m+1;
 
+    NodeGrid grid(W, W);
+
     // Mat frame = Mat::zeros(Size(W, W), CV_8UC3);
-    ThetaStar::LazySearch *algo = new ThetaStar::LazySearch(W, W);
+    ThetaStar::LazySearch *algo = new ThetaStar::LazySearch(&grid);
 
     for (int k = 1; k < W-1; k += 2)
     {
@@ -39,7 +44,7 @@ TEST(ThetaStarTest, testPathFindingHard)
             // color[1] = 255;
             // color[2] = 255;
 
-            algo->setOccupied(j, k, true);
+            grid.setOccupied(j, k, true);
         }
     }
 

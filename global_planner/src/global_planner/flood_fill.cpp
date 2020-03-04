@@ -1,28 +1,21 @@
-#include <global_planner/astar.hpp>
+#include <global_planner/flood_fill.hpp>
 
 #include <stack>
 #include "ros/ros.h"
 
-using namespace AStar;
-
-Search::Search(NodeGrid *grid) :
+FloodFill::FloodFill(NodeGrid *grid) :
     grid_(grid)
 {
 }
 
-std::vector<Index2> Search::search(Index2 start, Index2 target)
+std::vector<Index2> FloodFill::search(Index2 start)
 {
     std::vector<Index2> path;
-
-    if (!isTraversable(start) || !isTraversable(target))
-    {
-        return path;
-    }
 
     grid_->run += 1; // unique id for this run
 
     Node*& start_node = grid_->getNodeAt(start);
-    start_node->reset(target, grid_->run);
+    start_node->reset(grid_->run);
     start_node->cost.setGCost(0);
 
     queue_.insert(start_node->cost, start_node);
@@ -36,24 +29,14 @@ std::vector<Index2> Search::search(Index2 start, Index2 target)
             continue ;
         }
 
-        if (setVertexShouldSkip(node))
-        {
-            continue ;
-        }
-
-        if (node->index == target)
+        if (isTarget(node))
         {
             std::stack<Node *> st;
             Node *last = nullptr;
 
             while (node != nullptr)
             {
-                if (last == nullptr || node->parent == nullptr || !shouldPrune(node->parent, node, last))
-                {
-                    st.push(node);
-                    last = node;
-                }
-                
+                st.push(node);
                 node = node->parent;
             }
 
@@ -68,7 +51,7 @@ std::vector<Index2> Search::search(Index2 start, Index2 target)
 
         node->visited = true;
 
-        findSuccessors(node, target);
+        findSuccessors(node);
     }
 
     queue_.clear();
@@ -76,7 +59,7 @@ std::vector<Index2> Search::search(Index2 start, Index2 target)
     return path;
 }
 
-void Search::findSuccessors(Node *node, Index2 target)
+void FloodFill::findSuccessors(Node *node)
 {
     bool lower_cost;
     int bx = node->index.x, by = node->index.y;
@@ -91,20 +74,15 @@ void Search::findSuccessors(Node *node, Index2 target)
                 continue ;
             }
 
+
             Node*& neighbor = grid_->getNodeAt(bx+i, by+j);
 
             if (neighbor->run != grid_->run)
             {
-                neighbor->reset(target, grid_->run);
+                neighbor->reset(grid_->run);
             }
-
-            if (!isTraversable(neighbor) || neighbor->visited)
-            {
-                continue ;
-            }
-
-            // dead corners
-            if (i != 0 && j != 0 && !isTraversable(Index2(bx+i, by)) && !isTraversable(Index2(bx, by+j)))
+            
+            if (neighbor->visited)
             {
                 continue ;
             }
@@ -117,12 +95,7 @@ void Search::findSuccessors(Node *node, Index2 target)
     }
 }
 
-bool Search::updateVertexHasLowerCost(Node *node, Node *neighbor)
-{
-    return relax(node, neighbor);
-}
-
-bool Search::relax(Node *node, Node *neighbor)
+bool FloodFill::updateVertexHasLowerCost(Node *node, Node *neighbor)
 {
     double tentative_g = node->cost.g + (node->index - neighbor->index).norm<double>();
 

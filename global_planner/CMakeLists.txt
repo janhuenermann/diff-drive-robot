@@ -126,6 +126,8 @@ include_directories(
 add_library(${PROJECT_NAME}
   src/${PROJECT_NAME}/astar.cpp
   src/${PROJECT_NAME}/thetastar.cpp
+  src/${PROJECT_NAME}/priority_grid.cpp
+  src/${PROJECT_NAME}/flood_fill.cpp
 )
 
 # set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-Ofast")
@@ -202,7 +204,7 @@ install(DIRECTORY include/${PROJECT_NAME}/
 #############
 
 ## Add gtest based cpp test target and link libraries
-catkin_add_gtest(test_${PROJECT_NAME} test/heap.cpp test/astar.cpp test/thetastar.cpp test/test_global_planner.cpp)
+catkin_add_gtest(test_${PROJECT_NAME} test/heap.cpp test/astar.cpp test/thetastar.cpp test/test_global_planner.cpp test/flood_fill.cpp)
 
 if(TARGET test_${PROJECT_NAME})
     target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME} ${catkin_LIBRARIES})

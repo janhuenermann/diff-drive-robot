@@ -5,7 +5,9 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Path.h>
 
+#include <global_planner/priority_grid.hpp>
 #include <global_planner/thetastar.hpp>
+#include <global_planner/flood_fill.hpp>
 
 template<class T>
 class PlannerNode
@@ -13,7 +15,10 @@ class PlannerNode
 public:
 
     PlannerNode() :
-        nh_(), algorithm_(new T(0, 0)),
+        nh_(), 
+        grid_(),
+        algorithm_(new T(&grid_)),
+        flood_fill_(new FloodFill(&grid_)),
         received_map_(false),
         received_robot_pose_(false),
         received_nav_goal_(false)
@@ -50,7 +55,33 @@ public:
         Index2 start = getIndexFromPosition(robot_position_);
         Index2 target = getIndexFromPosition(goal_);
 
-        path_ = algorithm_->search(start, target);
+        Index2 start_traversable = start;
+        Index2 target_traversable = target;
+
+        if (!algorithm_->isTraversable(start_traversable))
+        {
+            std::vector<Index2> path_to_start = flood_fill_->search(start);
+            start_traversable = path_to_start.back();
+        }
+
+        if (!algorithm_->isTraversable(target_traversable))
+        {
+            std::vector<Index2> path_to_target = flood_fill_->search(target);
+            target_traversable = path_to_target.back();
+        }
+
+        path_ = algorithm_->search(start_traversable, target_traversable);
+
+        if (start != start_traversable)
+        {
+            path_.insert(path_.begin(), start);
+        }
+
+        if (target != target_traversable)
+        {
+            path_.push_back(target);
+        }
+
         publishPath();
     }
 
@@ -81,22 +112,19 @@ public:
             h = msg->info.height;
 
         // resize map if necessary
-        if (algorithm_->getWidth() < w
-            || algorithm_->getHeight() < h)
+        if (grid_.width != w || grid_.height != h)
         {
-            algorithm_->resize(msg->info.width, msg->info.height);
+            grid_.resize(w, h);
         }
 
         map_resolution_ = (double)msg->info.resolution;
         map_origin_ = Point2(msg->info.origin.position.x, msg->info.origin.position.y);
 
-        uint8_t *occ = algorithm_->getOccupancyData();
-
         for (int j = 0; j < h; ++j)
         {
             for (int i = 0; i < w; ++i)
             {
-                occ[i + j * w] = msg->data[i + j * w] > 0 ? 1 : 0; // row-major order
+                grid_.occupancy[i + j * w] = msg->data[i + j * w] > 0 ? 1 : 0; // row-major order
             }
         }
     }
@@ -131,7 +159,10 @@ public:
 protected:
 
     double map_resolution_;
+
+    NodeGrid grid_;
     T* algorithm_;
+    FloodFill *flood_fill_;
 
     bool received_map_;
     bool received_robot_pose_;
@@ -154,8 +185,6 @@ protected:
     std::vector<Index2> path_;
 
     ros::Time last_update_stamp_;
-
-    uint8_t nav_occ_;
 
 };
 

@@ -6,18 +6,18 @@
  */
 
 #include <math/vector2.hpp>
+
+#include <global_planner/priority_grid.hpp>
 #include <global_planner/astar.hpp>
 
 namespace ThetaStar
 {
 
-    typedef AStar::Node Node;
-
     // Implemented from https://en.wikipedia.org/wiki/Theta*
     class Search : public AStar::Search
     {
     public:
-        Search(int w, int h) : AStar::Search(w, h) {}
+        using AStar::Search::Search;
     protected:
         virtual bool hasLineOfSight(Node *a, Node *b);
         virtual bool updateVertex(Node *node, Node *neighbor);
@@ -25,9 +25,9 @@ namespace ThetaStar
         inline bool isTraversableSwapped(Index2 i, bool axes_swapped)
         {
             if (axes_swapped)
-                return occupancy_[i.x * width_ + i.y] == 0;
+                return grid_->occupancy[i.x * grid_->width + i.y] == 0;
             else
-                return occupancy_[i.y * width_ + i.x] == 0;
+                return grid_->occupancy[i.y * grid_->width + i.x] == 0;
         };
 
         virtual bool shouldPrune(Node *a, Node *b, Node *c)
@@ -40,7 +40,7 @@ namespace ThetaStar
     class LazySearch : public Search
     {
     public:
-        LazySearch(int w, int h) : Search(w, h) {}
+        using Search::Search;
     protected:
         virtual bool updateVertex(Node *node, Node *neighbor);
         virtual bool setVertexShouldSkip(Node *node);

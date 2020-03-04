@@ -3,12 +3,15 @@
 
 TEST(AStarTest, testPathFindingSimple)
 {
-    int W = 21;
-    AStar::Search *algo = new AStar::Search(W, 3);
+    const int W = 21;
+
+    NodeGrid grid(W, W);
+
+    AStar::Search *algo = new AStar::Search(&grid);
 
     for (int k = 0; k < W-1; ++k)
     {
-        algo->setOccupied(k, 1, true);
+        grid.setOccupied(k, 1, true);
     }
 
     std::vector<Index2> path = algo->search(Index2(0, 0), Index2(0, 2));
@@ -31,7 +34,8 @@ TEST(AStarTest, testPathFindingHard)
     int m = 10;
     int W = 2*m+1;
 
-    AStar::Search *algo = new AStar::Search(W, W);
+    NodeGrid grid(W, W);
+    AStar::Search *algo = new AStar::Search(&grid);
 
     for (int k = 1; k < W-1; k += 2)
     {
@@ -39,7 +43,7 @@ TEST(AStarTest, testPathFindingHard)
 
         for (int j = m-1-l; j < m+l; ++j)
         {
-            algo->setOccupied(j, k, true);
+            grid.setOccupied(j, k, true);
         }
     }
 
