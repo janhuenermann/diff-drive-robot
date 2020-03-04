@@ -21,7 +21,7 @@ public:
         // PID params
         const double freq = 50.0;
         const double p_pos = 2.00, i_pos = 0.00, d_pos = 0.100;
-        const double p_ang = 1.30, i_ang = 0.00, d_ang = 0.050;
+        const double p_ang = 1.00, i_ang = 0.00, d_ang = 0.000;
 
         pid_.setParameters(freq, Vec2(p_pos, p_ang), Vec2(i_pos, i_ang), Vec2(d_pos, d_ang));
         
