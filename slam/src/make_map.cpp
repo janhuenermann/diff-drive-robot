@@ -61,7 +61,7 @@ void LidarMap::callback_scan(const sensor_msgs::LaserScan& msg){
   Parameters:
       msg       Output of laser scan
   */
-  ros::WallTime t_start = ros::WallTime::now();
+  profiler.start();
  std::vector<float> ranges = msg.ranges;
  // Scan is 360 degrees
  for(int i=0;i<360;i++){
@@ -94,8 +94,8 @@ void LidarMap::callback_scan(const sensor_msgs::LaserScan& msg){
  // publish the new grid
  publish_grid();
 
- ros::WallTime t_end = ros::WallTime::now();
- double dt = (t_end - t_start).toNSec()*1e-6;
+ profiler.stop();
+ profiler.print("mapping");
  // ROS_INFO("time for scan %f ms",dt);
 }
 

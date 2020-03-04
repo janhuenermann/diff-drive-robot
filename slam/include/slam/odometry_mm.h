@@ -5,6 +5,7 @@
 #include "ros/ros.h"
 #include "ros/time.h"
 #include <tf/transform_broadcaster.h>
+#include <math/util.hpp>
 
 
 class OdometryMM{
@@ -26,6 +27,7 @@ private:
   double v;                         // current speed
   double compass;                 // angle output of compas
   double w ;                      // angular velocity
+  Profiler profiler;
 
 public:
   OdometryMM(geometry_msgs::Pose2D pos_init,float wl_init ,float wr_init, ros::NodeHandle *nh);

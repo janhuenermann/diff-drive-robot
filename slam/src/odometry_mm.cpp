@@ -47,6 +47,7 @@ void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
   }*/
   ros::WallTime start_t = ros::WallTime::now();
   float dt = (start_t-t).toNSec()*1e-9;
+  profiler.start();
   //ROS_INFO("t %f, start %f",t.toNSec()*1e-9,start_t.toNSec()*1e-9);
   if(dt>1){
     t = start_t;
@@ -103,8 +104,8 @@ void OdometryMM::callback_wheels(const sensor_msgs::JointState& msg){
   publish_pos();
   publish_vel(w_av,v);
 
-  ros::WallTime t_end = ros::WallTime::now();
-  double t_mm = (t_end - start_t).toNSec()*1e-6;
+  profiler.stop();
+  profiler.print("odometry_mm");
   // ROS_INFO("time for motion model: %f ms",t_mm);
 }
 

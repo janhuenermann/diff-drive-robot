@@ -7,6 +7,8 @@
 #include <set>
 #include "math.h"
 #include "ros/time.h"
+#include <math/util.hpp>
+
 
 // Constants used to fill occupancy grid
 const int UNKNOWN = -1;
@@ -44,6 +46,7 @@ private:
   std::vector<std::vector<float>> log_odds;
   std::vector<MapIdx> mask_inflation; // holds relative positions of to be inflated cells
   std::vector<std::vector<std::set<MapIdx>>> inflation;    // holds inflation info
+  Profiler profiler;
 
   int get_state(const MapIdx &idx);
   geometry_msgs::Pose2D inverseSensorModel(geometry_msgs::Pose2D pos,float rng,float deg);

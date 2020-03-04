@@ -9,6 +9,8 @@
 #include <global_planner/thetastar.hpp>
 #include <global_planner/flood_fill.hpp>
 
+#include <math/util.hpp>
+
 template<class T>
 class PlannerNode
 {
@@ -103,7 +105,7 @@ public:
 
         pub_path_.publish(msg);
 
-        ROS_INFO("Published path with %d way-points!", (int)path_.size());
+        // ROS_INFO("Published path with %d way-points!", (int)path_.size());
     }
 
     void updateMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
@@ -153,7 +155,10 @@ public:
 
     void tickCallback(const ros::TimerEvent& evt)
     {
+        profiler_.start();
         findPath();
+        profiler_.stop();
+        profiler_.print("path finding");
     }
 
 protected:
@@ -185,6 +190,8 @@ protected:
     std::vector<Index2> path_;
 
     ros::Time last_update_stamp_;
+
+    Profiler profiler_;
 
 };
 

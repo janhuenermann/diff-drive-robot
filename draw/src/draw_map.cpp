@@ -144,20 +144,38 @@ public:
 
         if (received_pursuit_point_)
         {
-            setPixel(pursuit_point_, 0, 255, 255);
+            drawCircle(pursuit_point_, 5, 0, 255, 255);
         }
-        
+
         if (received_pose_)
         {
-            setColor(robot_pose_, 255, 0, 0);
+            drawCircle(Point2(robot_pose_.x, robot_pose_.y), 7, 255, 0, 0);
         }
 
         if (received_nav_goal_)
         {
-            setColor(nav_goal_, 0, 255, 0);
+            drawCircle(Point2(nav_goal_.x, nav_goal_.y), 7, 0, 255, 0);
         }
 
-        imshow("Map", frame_);
+        double ar = (double)frame_.rows / (double)frame_.cols;
+
+        const double max_side = 768;
+        double out_w, out_h;
+
+        if (ar > 1)
+        {
+            out_w = max_side / ar;
+            out_h = max_side;
+        }
+        else
+        {
+            out_w = max_side;
+            out_h = max_side * ar;
+        }
+
+        cv::resize(frame_, output_, cv::Size((int)out_w, (int)out_h), 0, 0, CV_INTER_LINEAR);
+
+        imshow("Map", output_);
         waitKey(1);
     }
 
@@ -244,11 +262,23 @@ public:
             r, g, b);
     }
 
+    inline Point toCVPoint(Point2 p)
+    {
+        return Point((int)std::round(3.0 * (p.x - map_.info.origin.position.x) / map_.info.resolution), 
+                     (int)std::round(3.0 * (p.y - map_.info.origin.position.y) / map_.info.resolution));
+    }
+
+    inline void drawCircle(Point2 p, int radius, uint8_t r, uint8_t g, uint8_t b)
+    {
+        
+        circle(frame_, toCVPoint(p), radius, Scalar(r, g, b), FILLED);
+    }
+
 
 protected:
 
-    Mat map_viz_;
     Mat frame_;
+    Mat output_;
 
     SplinePath *trajectory_;
 

@@ -13,7 +13,7 @@ class Trajectory
 
 public:
 
-    Trajectory() : s_(0.0), is_at_end_(true), has_path_(false)
+    Trajectory() : s_(0.0), is_at_end_(true), has_path_(false), spline_(nullptr)
     {
     }
 
