@@ -26,8 +26,8 @@ int main(int argc, char **argv){
       x = goals.substr(0, pos_c);
       curr.erase(0, pos_c + 1);
       y = curr;
-      current_pos.x = std::stof(y);
-      current_pos.y = std::stof(x);
+      current_pos.y = std::stof(y);
+      current_pos.x = std::stof(x);
       goal_col.push_back(current_pos);
       goals.erase(0, pos + 1);
   }
