@@ -17,7 +17,7 @@
       <param name="cell_size" type="string" value="$(arg cell_size)" />
     </node>
     <node name="global_planner" pkg="global_planner" type="node" output="screen" />
-    <node name="local_planner" pkg="local_planner" type="controller" output="screen" delay="5" />
+    <node name="local_planner" pkg="local_planner" type="controller" output="screen" />
 
     <node name="mission_planner" pkg="mission_planner" type="node" output="screen">
       <param name="goals" type="string" value="$(arg goals)" />
