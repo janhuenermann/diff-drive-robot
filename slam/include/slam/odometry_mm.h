@@ -9,9 +9,9 @@
 
 class OdometryMM{
 private:
-  const float WEIGHT_IMU = 0.05f;       // weights for weighted sensor fusion
-  const float WEIGHT_ODOMETRY = 0.95f;
-  const float WEIGHT_COMPASS = 0.3f;
+  const float WEIGHT_IMU = 0.03f;       // weights for weighted sensor fusion
+  const float WEIGHT_ODOMETRY = 0.97f;
+  const float WEIGHT_COMPASS = 0.8f;
   geometry_msgs::Pose2D pos;    // position in world frame
   ros::Subscriber wheel_sub;    // subscribe to wheel positions
   ros::Subscriber imu_sub;    // subscribe to imu

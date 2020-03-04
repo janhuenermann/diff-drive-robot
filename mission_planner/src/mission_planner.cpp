@@ -23,7 +23,7 @@ void MissionPlanner::callback_pos(const geometry_msgs::Pose2D& msg){
       msg     message with robot coordinates
   */
   if(calc_dist(msg,goals[current_goal])<THRESHOLD_DISTANCE){
-    if(current_goal<goals.size()){
+    if(current_goal<(int)goals.size()-1){
       current_goal++;
     }
   }
