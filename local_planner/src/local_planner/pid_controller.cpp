@@ -52,7 +52,7 @@ void PIDController::update(double &linear_vel, double &angular_vel)
     Vec2 d_term = d_ * (err - prev_err_);
 
     Vec2 action = p_term + i_term + d_term;
-    linear_vel = action.x;
+    linear_vel = action.x; // std::max(action.x - 0.5 * err_ang * err_ang, 0.0);
     angular_vel = action.y;
 
     integrated_err_ += err;

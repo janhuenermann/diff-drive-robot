@@ -29,7 +29,7 @@ Point2 Trajectory::nextPoint(Point2 robot_pos)
 {
     assert(hasPath());
 
-    while (!isAtEnd() && (current_point_ - robot_pos).norm<double>() < getDistance())
+    while (!isAtEnd() && (current_point_ - robot_pos).norm<double>() < dist_)
     {
         s_ += step_size_;
         updateCurrentPoint();
@@ -38,10 +38,10 @@ Point2 Trajectory::nextPoint(Point2 robot_pos)
     return current_point_;
 }
 
-double Trajectory::getDistance()
-{
-    return std::min(0.2 + spline_->velocity(s_).norm<double>(), 1.0) * dist_;
-}
+// double Trajectory::getDistance()
+// {
+//     return dist_; // std::min(0.1 + spline_->velocity(s_).norm<double>(), 1.5) * dist_;
+// }
 
 void Trajectory::updateCurrentPoint()
 {

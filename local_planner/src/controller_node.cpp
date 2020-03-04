@@ -19,8 +19,8 @@ public:
     {
         // PID params
         const double freq = 50.0;
-        const double p_pos = 1.00, i_pos = 0.00, d_pos = 0.100;
-        const double p_ang = 1.00, i_ang = 0.00, d_ang = 0.050;
+        const double p_pos = 1.50, i_pos = 0.00, d_pos = 0.100;
+        const double p_ang = 1.30, i_ang = 0.00, d_ang = 0.050;
 
         pid_.setParameters(freq, Vec2(p_pos, p_ang), Vec2(i_pos, i_ang), Vec2(d_pos, d_ang));
         
@@ -105,6 +105,8 @@ public:
 
             pid_.setTargetPosition(pursuit_point);
             pid_.update(linear_vel, angular_vel);
+
+            linear_vel = std::max(0.0, linear_vel - 0.5 * angular_vel * angular_vel);
 
             twist.linear.x = linear_vel;
             twist.angular.z = angular_vel;
