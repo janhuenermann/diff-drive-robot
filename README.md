@@ -5,7 +5,14 @@ NUS, EE4308
 Clone this repo inside of the folder `catkin_ws/src`. After that, run `catkin_make` in the
 root directory of the workspace.
 
-Launch the robot:
+### Install
+First build the workspace:
+```
+catkin_make install -DCMAKE_BUILD_TYPE=Release
+```
+
+### Launch
+To launch the robot, run the following command:
 ```
 roslaunch bringup robot_bringup.launch
 ```
@@ -24,9 +31,9 @@ roslaunch bringup robot_bringup.launch
 - [x] Post-process to get a series of turning points
 
 #### Part 3
-- [ ] Project global turning points to local space
-- [ ] Implement Potential Field to guide the robot while avoiding obstacles
-- [ ] Move continuously from start to end
+- [x] Project global turning points to local space
+- [x] Implement trajectory generation using splines between global turning points. Path must be collision free.
+- [x] Generate via-points on the spline and use them for pure pursuit
 
 ### Topics
 - `/robot_pose`: geometry_msgs/Pose2D
