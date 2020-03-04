@@ -73,6 +73,11 @@ struct Vector2
         return *this;
     };
 
+    inline Vector2<T> rotate(double theta)
+    {
+        return Vector2<T>(std::cos(theta) * x - std::sin(theta) * y, std::sin(theta) * x + std::cos(theta) * y);
+    }
+
     inline double atan2()
     {
         return std::atan2(y, x);

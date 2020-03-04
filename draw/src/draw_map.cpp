@@ -10,6 +10,7 @@
 #include <math/vector2.hpp>
 #include <math/SplinePathData.h>
 #include <math/spline.hpp>
+#include <math/util.hpp>
 
 using namespace cv;
 
@@ -24,7 +25,7 @@ public:
         received_pursuit_point_(false),
         trajectory_(nullptr)
     {
-        const double freq = 5.0;
+        const double freq = 20.0;
 
         sub_map_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &DrawMapNode::mapCallback, this);
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &DrawMapNode::robotPoseCallback, this);
@@ -36,7 +37,7 @@ public:
         tick_timer_ = nh_.createTimer(ros::Duration(1.0 / freq), &DrawMapNode::tickCallback, this);
 
         ROS_INFO("Booting draw map node");
-        namedWindow("Map", WINDOW_NORMAL);
+        namedWindow("Map", WINDOW_AUTOSIZE);
     }
 
     void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
@@ -46,6 +47,7 @@ public:
         if (frame_.cols != map_.info.width || frame_.rows != map_.info.height)
         {
             frame_.create(map_.info.height * PX_CELL_SIZE, map_.info.width * PX_CELL_SIZE, CV_8UC3);
+            frame_data_ = (uint8_t *)frame_.data;
         }
 
         received_map_ = true;
@@ -81,14 +83,16 @@ public:
 
     void pursuitPointCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
     {
-        pursuit_point_.x = msg->x;
-        pursuit_point_.y = msg->y;
+        pursuit_point_ = *msg;
         received_pursuit_point_ = true;
     }
 
     void tickCallback(const ros::TimerEvent& evt)
     {
+        profiler_.start();
         draw();
+        profiler_.stop();
+        profiler_.print("drawing");
     }
 
     void draw()
@@ -111,18 +115,18 @@ public:
                 switch (state)
                 {
                     case 0: // free
-                        setColor(x, y, 0);
+                        drawCell(cv::Point(PX_CELL_SIZE * x, PX_CELL_SIZE * y), 0);
                         break ;
                     case 1: // occupied
-                        setColor(x, y, 255);
+                        drawCell(cv::Point(PX_CELL_SIZE * x, PX_CELL_SIZE * y), 255);
                         break ;
                     case 2: // inflated
-                        setColor(x, y, 128);
+                        drawCell(cv::Point(PX_CELL_SIZE * x, PX_CELL_SIZE * y), 128);
                         break ;
 
                     case -1: // unknown
                     default:
-                        setColor(x, y, 64);
+                        drawCell(cv::Point(PX_CELL_SIZE * x, PX_CELL_SIZE * y), 64);
                         break ;
                 }
             }
@@ -138,23 +142,24 @@ public:
             for (int k = 1; k < planned_path_.poses.size()-1; ++k)
             {
                 geometry_msgs::PoseStamped& pose_stamped = planned_path_.poses[k];
-                setColor(pose_stamped.pose.position, 0, 0, 255);
+                drawCell(toCVPoint(pose_stamped.pose.position), 0, 0, 255);
             }
         }
 
         if (received_pursuit_point_)
         {
-            drawCircle(pursuit_point_, 5, 0, 255, 255);
+            drawCircle(toCVPoint(pursuit_point_), 5, 0, 255, 255);
         }
 
         if (received_pose_)
         {
-            drawCircle(Point2(robot_pose_.x, robot_pose_.y), 7, 255, 0, 0);
+            drawRobotPose(map_.info.resolution * 5);
+            // drawCircle(toCVPoint(robot_pose_), 7, 255, 0, 0);
         }
 
         if (received_nav_goal_)
         {
-            drawCircle(Point2(nav_goal_.x, nav_goal_.y), 7, 0, 255, 0);
+            drawCircle(toCVPoint(nav_goal_), 7, 0, 255, 0);
         }
 
         double ar = (double)frame_.rows / (double)frame_.cols;
@@ -179,6 +184,35 @@ public:
         waitKey(1);
     }
 
+    void drawRobotPose(double size)
+    {
+        const double w = size / 10.0;
+        const double len = size;
+        cv::Point vertices[4];
+
+        Point2 center = Point2(robot_pose_.x, robot_pose_.y);
+
+        Point2 aa = Point2(w, 0).rotate(robot_pose_.theta);
+        Point2 ba = Point2(0, len).rotate(robot_pose_.theta);
+
+        Point2 ab = Point2(0, w).rotate(robot_pose_.theta);
+        Point2 bb = Point2(len, 0).rotate(robot_pose_.theta);
+
+        vertices[0] = toCVPoint(center + aa - ba);
+        vertices[1] = toCVPoint(center + aa + ba);
+        vertices[2] = toCVPoint(center - aa + ba);
+        vertices[3] = toCVPoint(center - aa - ba);
+
+        cv::fillConvexPoly(frame_, vertices, 4, Scalar(255, 0, 0));
+
+        vertices[0] = toCVPoint(center + ab - bb);
+        vertices[1] = toCVPoint(center + ab + bb);
+        vertices[2] = toCVPoint(center - ab + bb);
+        vertices[3] = toCVPoint(center - ab - bb);
+
+        cv::fillConvexPoly(frame_, vertices, 4, Scalar(255, 0, 0));
+    }
+
     void drawTrajectory()
     {
         if (trajectory_ == nullptr)
@@ -186,7 +220,7 @@ public:
             return ;
         }
 
-        const double resolution = 100.0;
+        const double resolution = 10.0;
         const double step_size = 1.0 / resolution;
 
         double s = 0.0;
@@ -203,7 +237,7 @@ public:
                 break ;
             }
 
-            setPixel(p, 255, 0, 255);
+            drawCell(toCVPoint(p), 0, 0, 255);
 
             if (s >= trajectory_->length)
             {
@@ -214,64 +248,56 @@ public:
         }
     }
 
-    inline void setPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b)
+    inline void setPixel(const int &x, const int &y, const uint8_t &r, const uint8_t &g, const uint8_t &b)
     {
-        Vec3b &v = frame_.at<Vec3b>(y, x);
-        v[0] = r;
-        v[1] = g;
-        v[2] = b;
+        const int idx = 3 * (y * frame_.cols + x);
+        frame_data_[idx+0] = r;
+        frame_data_[idx+1] = g;
+        frame_data_[idx+2] = b;
     }
 
-    inline void setPixel(Point2 pt, uint8_t r, uint8_t g, uint8_t b)
+    inline void setPixel(const cv::Point p, const uint8_t r, const uint8_t g, const uint8_t b)
     {
-        setPixel(
-            (int)std::round((pt.x - map_.info.origin.position.x) / map_.info.resolution * (double)PX_CELL_SIZE), 
-            (int)std::round((pt.y - map_.info.origin.position.y) / map_.info.resolution * (double)PX_CELL_SIZE),
-            r, g, b);
+        setPixel(p.x, p.y, r, g, b);
     }
 
-    inline void setColor(int x, int y, uint8_t r, uint8_t g, uint8_t b)
+    inline void drawCell(cv::Point p, uint8_t r, uint8_t g, uint8_t b)
     {
-        if (x < 0 || y < 0 || x >= map_.info.width || y >= map_.info.height)
+        for (int j = 0; j<PX_CELL_SIZE; ++j)
         {
-            return ;
+            for (int i = 0; i<PX_CELL_SIZE; ++i)
+            {
+                setPixel(p.x+i, p.y+j, r, g, b);
+            }
         }
-
-        Rect rect(3 * x, 3 * y, PX_CELL_SIZE, PX_CELL_SIZE);
-        cv::rectangle(frame_, rect, Scalar(r, g, b), FILLED);
     }
 
-    inline void setColor(int x, int y, uint8_t l)
+    inline void drawCell(cv::Point p, uint8_t l)
     {
-        setColor(x, y, l, l, l);
+        drawCell(p, l, l, l);
     }
 
-    inline void setColor(geometry_msgs::Pose2D pose, uint8_t r, uint8_t g, uint8_t b)
+    template<class T>
+    inline cv::Point toCVPoint(T p)
     {
-        setColor(
-            (int)((pose.x - map_.info.origin.position.x) / map_.info.resolution), 
-            (int)((pose.y - map_.info.origin.position.y) / map_.info.resolution),
-            r, g, b);
+        return toCVPoint(Point2(p.x, p.y));
     }
 
-    inline void setColor(geometry_msgs::Point pt, uint8_t r, uint8_t g, uint8_t b)
+    inline cv::Point toCVPoint(int x, int y)
     {
-        setColor(
-            (int)((pt.x - map_.info.origin.position.x) / map_.info.resolution), 
-            (int)((pt.y - map_.info.origin.position.y) / map_.info.resolution),
-            r, g, b);
+        return toCVPoint(Point2(x, y));
     }
 
-    inline Point toCVPoint(Point2 p)
+    inline cv::Point toCVPoint(Point2 p)
     {
-        return Point((int)std::round(3.0 * (p.x - map_.info.origin.position.x) / map_.info.resolution), 
-                     (int)std::round(3.0 * (p.y - map_.info.origin.position.y) / map_.info.resolution));
+        return Point((int)std::round((double)PX_CELL_SIZE * (p.x - map_.info.origin.position.x) / map_.info.resolution), 
+                     (int)std::round((double)PX_CELL_SIZE * (p.y - map_.info.origin.position.y) / map_.info.resolution));
     }
 
-    inline void drawCircle(Point2 p, int radius, uint8_t r, uint8_t g, uint8_t b)
+    inline void drawCircle(cv::Point p, int radius, uint8_t r, uint8_t g, uint8_t b)
     {
         
-        circle(frame_, toCVPoint(p), radius, Scalar(r, g, b), FILLED);
+        circle(frame_, p, radius, Scalar(r, g, b), FILLED);
     }
 
 
@@ -279,6 +305,8 @@ protected:
 
     Mat frame_;
     Mat output_;
+
+    uint8_t *frame_data_;
 
     SplinePath *trajectory_;
 
@@ -294,7 +322,7 @@ protected:
     nav_msgs::Path planned_path_;
     bool received_path_;
 
-    Point2 pursuit_point_;
+    geometry_msgs::Pose2D pursuit_point_;
     bool received_pursuit_point_;
 
     ros::NodeHandle nh_;
@@ -306,6 +334,8 @@ protected:
     ros::Subscriber sub_traj_;
 
     ros::Timer tick_timer_;
+
+    Profiler profiler_;
 
 
 };
