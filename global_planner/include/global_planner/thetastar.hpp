@@ -20,7 +20,7 @@ namespace ThetaStar
         using AStar::Search::Search;
     protected:
         virtual bool hasLineOfSight(Node *a, Node *b);
-        virtual bool updateVertex(Node *node, Node *neighbor);
+        virtual bool updateVertexHasLowerCost(Node *node, Node *neighbor);
 
         inline bool isTraversableSwapped(Index2 i, bool axes_swapped)
         {
@@ -42,7 +42,7 @@ namespace ThetaStar
     public:
         using Search::Search;
     protected:
-        virtual bool updateVertex(Node *node, Node *neighbor);
+        virtual bool updateVertexHasLowerCost(Node *node, Node *neighbor);
         virtual bool setVertexShouldSkip(Node *node);
     };
 };
