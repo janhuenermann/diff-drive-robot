@@ -1,5 +1,7 @@
 #include <global_planner/thetastar.hpp>
 
+#include <math/line_of_sight.hpp>
+
 using namespace ThetaStar;
 
 template<class T>
@@ -20,110 +22,21 @@ inline bool isColinear(Index2 w, Index2 u, Index2 v)
     return w.x * (u.y - v.y) + u.x * (v.y - w.y) + v.x * (w.y - u.y) == 0;
 }
 
-bool Search::hasLineOfSight(Node *a, Node *b)
+void lazythetastar_line_of_sight_cb(const Vector2<int>& p, bool& stop, void *data)
 {
-    const Point2 start = a->index.cast<double>();
-    const Point2 end = b->index.cast<double>(); // center of cell
-
-    const Point2 d = (end - start);
-    const bool should_swap = std::abs(d.x) < std::abs(d.y);
-
-    Point2 _ls = swapped(should_swap, start);
-    Point2 _ls_f = swapped(should_swap, end);
-
-    Point2 dls = _ls_f - _ls;
-    Index2 ls = _ls.round<int>();
-    Index2 ls_f = _ls_f.round<int>();
-
-    const bool inv_err = dls.y < 0;
-
-    const double sgn_ld = copysign(1.0, dls.x);
-    const double sgn_sd = copysign(1.0, dls.y);
-
-    const int sgn_l = (int)sgn_ld;
-    const int sgn_s = (int)sgn_sd;
-
-    const double phi = dls.y / std::abs(dls.x);
-
-    bool corner_traversable;
-    double eps_s = _ls.y - ls.y;
-    double lambda = std::abs(dls.y / dls.x) * (0.5 + (_ls.x - ls.x) * sgn_l) - 0.5;
-    double lambda_;
-
-    Index2 cur, cur_a, cur_b;
-
-    while (ls != ls_f)
+    if (!((Search *)data)->isTraversable(p))
     {
-        ls.x += sgn_l;
-        eps_s += phi;
-
-        if (inv_err ? eps_s < -0.5 : eps_s >= 0.5) // check if error is big
-        {
-            eps_s -= sgn_sd;
-            ls.y += sgn_s;
-
-            lambda_ = eps_s * sgn_s;
-
-            if (lambda_ < lambda)
-            {
-                cur.x = ls.x;
-                cur.y = ls.y - sgn_s;
-
-                if (cur == ls_f)
-                {
-                    break ;
-                }
-
-                if (!isTraversableSwapped(cur, should_swap))
-                {
-                    return false;
-                }
-            }
-            else if (lambda_ > lambda)
-            {
-                cur.x = ls.x - sgn_l;
-                cur.y = ls.y;
-
-                if (cur == ls_f)
-                {
-                    break ;
-                }
-
-                if (!isTraversableSwapped(cur, should_swap))
-                {
-                    return false;
-                }
-            }
-            else // corner point
-            {
-                cur_a.x = ls.x - sgn_l;
-                cur_a.y = ls.y;
-
-                cur_b.x = ls.x;
-                cur_b.y = ls.y - sgn_s;
-
-                if ((cur_a == ls_f) || (cur_b == ls_f))
-                {
-                    break ;
-                }
-
-                if (!isTraversableSwapped(cur_a, should_swap) && !isTraversableSwapped(cur_b, should_swap))
-                {
-                    return false;
-                }
-            }
-        }
-
-        if (!isTraversableSwapped(ls, should_swap))
-        {
-            return false;
-        }
+        stop = true;
     }
-
-    return true;
 }
 
-bool Search::updateVertex(Node *node, Node *neighbor)
+bool Search::hasLineOfSight(Node *a, Node *b)
+{
+    return !line_of_sight(a->index.cast<float>(), b->index.cast<float>(), 
+                          &lazythetastar_line_of_sight_cb, this);
+}
+
+bool Search::updateVertexHasLowerCost(Node *node, Node *neighbor)
 {
     if (node->parent != nullptr && hasLineOfSight(node->parent, neighbor))
     {
@@ -137,7 +50,7 @@ bool Search::updateVertex(Node *node, Node *neighbor)
     return false;
 }
 
-bool LazySearch::updateVertex(Node *node, Node *neighbor)
+bool LazySearch::updateVertexHasLowerCost(Node *node, Node *neighbor)
 {
     if (node->parent == nullptr)
     {
