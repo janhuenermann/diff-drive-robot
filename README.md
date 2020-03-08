@@ -16,6 +16,11 @@ To launch the robot, run the following command:
 ```
 roslaunch bringup robot_bringup.launch
 ```
+or
+```
+roslaunch bringup proj1.sh
+```
+to start the mission.
 
 ### TODO
 #### Part 1
