@@ -19,14 +19,14 @@ public:
         nh_()
     {
         // PID params
-        const double freq = 50.0;
-        const double p_pos = 2.00, i_pos = 0.00, d_pos = 0.100;
+        const double freq = 100.0;
+        const double p_pos = 1.80, i_pos = 0.00, d_pos = 0.100;
         const double p_ang = 1.00, i_ang = 0.00, d_ang = 0.000;
 
         pid_.setParameters(freq, Vec2(p_pos, p_ang), Vec2(i_pos, i_ang), Vec2(d_pos, d_ang));
         
-        traj_.setDistance(0.20);
-        traj_.setStepSize(1e-2);
+        traj_.setDistance(0.25);
+        traj_.setStepSize(1e-3);
 
         ros::Duration(5.0).sleep();
 
@@ -138,7 +138,6 @@ public:
         pursuit_point_pose.y = pursuit_point.y;
 
         pub_pursuit_point_.publish(pursuit_point_pose);
-
         pub_cmd_vel_.publish(twist);
 
         if (traj_.hasPath())
