@@ -34,7 +34,7 @@ int main(int argc, char **argv){
   // start motion model
   OdometryMM motion_model(pos_init,0,0,&n);
   // Declare the minimal and maximal position to consider for the map and create object for generating map and read LIDAR
-  geometry_msgs::Pose2D min_pos,max_pos;
+  Point2 min_pos, max_pos;
   pos = min_pos_s.find(',');
   min_pos.x = std::stof(min_pos_s.substr(0, pos));
   min_pos_s.erase(0, pos + 1);

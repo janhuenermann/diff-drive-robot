@@ -10,19 +10,19 @@
 
 class OdometryMM{
 private:
-  const float WEIGHT_IMU = 0.03f;       // weights for weighted sensor fusion
-  const float WEIGHT_ODOMETRY = 0.97f;
-  const float WEIGHT_COMPASS = 0.8f;
+  const double WEIGHT_ODOMETRY = 1.0;
+  const double WEIGHT_COMPASS = 0.0;
+
   geometry_msgs::Pose2D pos;    // position in world frame
   ros::Subscriber wheel_sub;    // subscribe to wheel positions
   ros::Subscriber imu_sub;    // subscribe to imu
   ros::Publisher pos_pub;       // position publisher
   ros::Publisher vel_pub;
-  float wl;                     // angle of left wheel in rad
-  float wr;                     // angle of right wheel in rad
-  float L = 0.16;               // Axle axle track
-  float WR = 0.066/2;           // Wheel radius
-  ros::WallTime t;                      // current ros time in seconds
+  double wl;                     // angle of left wheel in rad
+  double wr;                     // angle of right wheel in rad
+  double L = 0.16;               // Axle axle track
+  double WR = 0.066/2;           // Wheel radius
+  ros::Time t;                      // current ros time in seconds
   double a;                         // current acceleration
   double v;                         // current speed
   double compass;                 // angle output of compas
@@ -30,9 +30,9 @@ private:
   Profiler profiler;
 
 public:
-  OdometryMM(geometry_msgs::Pose2D pos_init,float wl_init ,float wr_init, ros::NodeHandle *nh);
+  OdometryMM(geometry_msgs::Pose2D pos_init, double wl_init, double wr_init, ros::NodeHandle *nh);
   void callback_wheels(const sensor_msgs::JointState& msg);
   void callback_imu(const sensor_msgs::Imu& msg);
   void publish_pos();
-  void publish_vel(float wz,float v);
+  void publish_vel(double wz, double v);
 };
