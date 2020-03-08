@@ -3,36 +3,52 @@
 
 #include <cmath>
 #include <iostream>
+#include <chrono>
 #include <execinfo.h>
+
+typedef std::chrono::high_resolution_clock high_res_clock;
+typedef std::chrono::duration<double, std::milli> high_res_duration;
+
+#define time_now() high_res_clock::now()
+#define time_diff(t1, t2, scale) ((std::chrono::duration<double, std::ratio<1, scale>>)(t2 - t1)).count()
 
 struct Profiler
 {
     Profiler() : max(0), sum(0), n(0)
     {
-        time_last_print = ros::WallTime::now();
+        time_last_print = time_now();
     }
 
     void start()
     {
-        time_start = ros::WallTime::now();
+        time_start = time_now();
     }
 
     void stop()
     {
-        double time = (ros::WallTime::now() - time_start).toNSec();
+        double duration = time_diff(time_start, time_now(), 1000);
 
-        max = std::max(time, max);
-        sum += time;
+        max = std::max(duration, max);
+        sum += duration;
         n += 1;
+    }
+
+    double getTimeTaken()
+    {
+        return sum / (double)n;
     }
 
     void print(std::string name, double every = 20.0)
     {
-        if ((ros::WallTime::now() - time_last_print).toSec() > every && n > 0)
+        if (time_diff(time_last_print, time_now(), 1) > every && n > 0)
         {
-            double avg = sum / (double)n * 1e-6;
-            ROS_INFO("%s takes on max (ms): %.4lf, average: (ms) %.4lf", name.c_str(), max * 1e-6, avg);
-            time_last_print = ros::WallTime::now();
+            double avg = sum / (double)n;
+#ifdef ROS_INFO
+            ROS_INFO("%s takes on max (ms): %.4lf, average: (ms) %.4lf", name.c_str(), max, avg);
+#else
+            std::cout << name << " takes on max (ms): " << max << ", average: (ms) " << avg << std::endl;
+#endif
+            time_last_print = time_now();
         }
     }
 
@@ -40,8 +56,8 @@ struct Profiler
     double max;
     double sum;
 
-    ros::WallTime time_start;
-    ros::WallTime time_last_print;
+    high_res_clock::time_point time_start;
+    high_res_clock::time_point time_last_print;
 
 };
 
@@ -49,7 +65,7 @@ struct MinMaxTracker
 {
     MinMaxTracker() : min(1e100), max(-1e100), n(0)
     {
-        time_last_print = ros::WallTime::now();
+        time_last_print = time_now();
     }
 
     void update(double val)
@@ -61,10 +77,14 @@ struct MinMaxTracker
 
     void print(std::string name, std::string unit, double every = 20.0)
     {
-        if ((ros::WallTime::now() - time_last_print).toSec() > every && n > 0)
+        if (time_diff(time_last_print, time_now(), 1) > every && n > 0)
         {
+#ifdef ROS_INFO
             ROS_INFO("%s min: %.4lf %s, max: %.4lf %s", name.c_str(), min, unit.c_str(), max, unit.c_str());
-            time_last_print = ros::WallTime::now();
+#else
+            std::cout << name << " min: " << min << " " << unit << ", max: " << max << " " << unit << std::endl;
+#endif
+            time_last_print = time_now();
         }
     }
 
@@ -72,7 +92,7 @@ struct MinMaxTracker
     double min;
     double max;
 
-    ros::WallTime time_last_print;
+    high_res_clock::time_point time_last_print;
 
 };
 
