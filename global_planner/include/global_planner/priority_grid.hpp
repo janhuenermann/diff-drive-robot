@@ -92,6 +92,26 @@ struct NodeGrid
     NodeGrid() : NodeGrid(0,0)
     {}
 
+    ~NodeGrid()
+    {
+        if (nodes != nullptr)
+        {
+            for (int k = width*height-1; k >= 0; k--)
+            {
+                delete nodes[k];
+            }
+
+            delete [] nodes;
+            nodes = nullptr;
+        }
+
+        if (occupancy != nullptr)
+        {
+            free(occupancy);
+            occupancy = nullptr;
+        }
+    }
+
     Node **nodes;
     uint8_t *occupancy;
 
