@@ -25,7 +25,7 @@ public:
         received_robot_pose_(false),
         received_nav_goal_(false)
     {
-        const double freq = 20.0;
+        const double freq = 10.0;
 
         sub_occ_grid_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &PlannerNode::mapCallback, this);
         sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &PlannerNode::robotPoseCallback, this);
