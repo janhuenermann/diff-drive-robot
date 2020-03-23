@@ -45,6 +45,16 @@ struct Vector2
         return static_cast<V>(x*x + y*y);
     }
 
+    inline Vector2<int> floor() const
+    {
+        return Vector2<int>((int)(std::floor(x)), (int)(std::floor(y)));
+    }
+
+    inline Vector2<int> ceil() const
+    {
+        return Vector2<int>((int)(std::ceil(x)), (int)(std::ceil(y)));
+    }
+
     inline Vector2<int> round() const
     {
         return Vector2<int>((int)(std::round(x)), (int)(std::round(y)));

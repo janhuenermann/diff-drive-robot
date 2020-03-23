@@ -14,7 +14,7 @@
 #include <math/spline.hpp>
 #include <math/util.hpp>
 
-#define row_major_i(idx) (idx.y() * map_.info.width + idx.x())
+#define row_major_i(idx) (idx.y * map_.info.width + idx.x)
 
 const bool CROP_TO_SPLINE = true;
 
@@ -61,18 +61,18 @@ public:
         const Vector2<int> sizei = size.ceil().cast<int>();
 
         out << "\\pgfmathsetmacro\\scale{0.15};" << std::endl;
-        out << "\\pgfmathsetmacro\\mapw{" << sizei.x() << "};" << std::endl;
-        out << "\\pgfmathsetmacro\\maph{" << sizei.y() << "};" << std::endl;
+        out << "\\pgfmathsetmacro\\mapw{" << sizei.x << "};" << std::endl;
+        out << "\\pgfmathsetmacro\\maph{" << sizei.y << "};" << std::endl;
 
         out << "\\begin{scope}[scale=\\scale, transform shape,rotate=90]" << std::endl;
         out << "\\draw [step=2, very thin, gray] (0,0) grid (\\mapw, \\maph);" << std::endl;
         out << "\\fill [inflated] " << std::endl;
 
-        ROS_INFO("offset %d %d, size %d %d", offset.x(), offset.y(), sizei.x(), sizei.y());
+        ROS_INFO("offset %d %d, size %d %d", offset.x, offset.y, sizei.x, sizei.y);
 
-        for (int y = 0; y < sizei.y(); ++y)
+        for (int y = 0; y < sizei.y; ++y)
         {
-            for (int x = 0; x < sizei.x(); ++x)
+            for (int x = 0; x < sizei.x; ++x)
             {
                 const Index2 i(x,y);
                 const Index2 j = CROP_TO_SPLINE ? i + offset : i;
@@ -87,9 +87,9 @@ public:
         out << ";" << std::endl;
         out << "\\fill [occupied] " << std::endl;
 
-        for (int y = 0; y < sizei.y(); ++y)
+        for (int y = 0; y < sizei.y; ++y)
         {
-            for (int x = 0; x < sizei.x(); ++x)
+            for (int x = 0; x < sizei.x; ++x)
             {
                 const Index2 i(x,y);
                 const Index2 j = CROP_TO_SPLINE ? i + offset : i;
@@ -122,8 +122,8 @@ public:
                     p -= offset.cast<double>();
                 }
 
-                dots_str += "(" + std::to_string(p.x()) + "," + std::to_string(p.y()) + ") circle (\\dotsradius) ";
-                path_str += "(" + std::to_string(p.x()) + "," + std::to_string(p.y()) + ") ";
+                dots_str += "(" + std::to_string(p.x) + "," + std::to_string(p.y) + ") circle (\\dotsradius) ";
+                path_str += "(" + std::to_string(p.x) + "," + std::to_string(p.y) + ") ";
             }
 
             path_str += "};\n";
@@ -161,7 +161,7 @@ public:
                     p -= offset.cast<double>();
                 }
 
-                out << "(" << p.x() << "," << p.y() << ") ";
+                out << "(" << p.x << "," << p.y << ") ";
 
                 if (s >= trajectory_->length)
                 {
@@ -183,8 +183,8 @@ public:
 
     Point2 toGridPoint(Point2 pt)
     {
-        return Point2((pt.x() - map_.info.origin.position.x), 
-                      (pt.y() - map_.info.origin.position.y)) / (double)map_.info.resolution;
+        return Point2((pt.x - map_.info.origin.position.x), 
+                      (pt.y - map_.info.origin.position.y)) / (double)map_.info.resolution;
     }
 
     void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
@@ -196,8 +196,8 @@ public:
 
     void robotPoseCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
     {
-        robot_pos_.x() = msg->x;
-        robot_pos_.y() = msg->y;
+        robot_pos_.x = msg->x;
+        robot_pos_.y = msg->y;
         robot_angle_ = msg->theta;
         received_pose_ = true;
     }
@@ -222,28 +222,28 @@ public:
 
         Point2 minp, maxp;
 
-        minp.x() = std::numeric_limits<double>::infinity();
-        minp.y() = std::numeric_limits<double>::infinity();
+        minp.x = std::numeric_limits<double>::infinity();
+        minp.y = std::numeric_limits<double>::infinity();
 
-        maxp.x() = -std::numeric_limits<double>::infinity();
-        maxp.y() = -std::numeric_limits<double>::infinity();
+        maxp.x = -std::numeric_limits<double>::infinity();
+        maxp.y = -std::numeric_limits<double>::infinity();
 
         const double expand = 3.0;
 
         for (auto &pose_stamped : planned_path_.poses)
         {
             Point2 gp = toGridPoint(Point2(pose_stamped.pose.position.x, pose_stamped.pose.position.y));
-            minp.x() = std::min(minp.x(), gp.x() - expand);
-            minp.y() = std::min(minp.y(), gp.y() - expand);
-            maxp.x() = std::max(maxp.x(), gp.x() + expand);
-            maxp.y() = std::max(maxp.y(), gp.y() + expand);
+            minp.x = std::min(minp.x, gp.x - expand);
+            minp.y = std::min(minp.y, gp.y - expand);
+            maxp.x = std::max(maxp.x, gp.x + expand);
+            maxp.y = std::max(maxp.y, gp.y + expand);
         }
 
-        min_path_.x() = std::max(grid_minp.x(), minp.x());
-        min_path_.y() = std::max(grid_minp.y(), minp.y());
+        min_path_.x = std::max(grid_minp.x, minp.x);
+        min_path_.y = std::max(grid_minp.y, minp.y);
 
-        max_path_.x() = std::min(grid_maxp.x(), maxp.x());
-        max_path_.y() = std::min(grid_maxp.y(), maxp.y());
+        max_path_.x = std::min(grid_maxp.x, maxp.x);
+        max_path_.y = std::min(grid_maxp.y, maxp.y);
 
         received_path_ = true;
     }
