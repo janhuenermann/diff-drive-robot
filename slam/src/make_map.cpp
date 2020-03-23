@@ -1,15 +1,16 @@
 #include <slam/make_map.h>
 #include <math/line_of_sight.hpp>
 
-LidarMap::LidarMap(ros::NodeHandle *nh, Point2 mi_pos, Point2 max_pos, double c_size, double inf_radius):
+LidarMap::LidarMap(Point2 mi_pos, Point2 max_pos, double c_size, double inf_radius):
     inflation_radius(inf_radius),
     min_pos(mi_pos),
     cell_size(c_size),received_robot_pose_(false)
 {
+    ros::NodeHandle nh;
     // Init subscribers and publishers
-    scan_sub = nh->subscribe("/scan", 10, &LidarMap::callback_scan, this);
-    pos_sub = nh->subscribe("/robot_pose", 1, &LidarMap::callback_pos, this);
-    grid_pub = nh->advertise<nav_msgs::OccupancyGrid>("/map", 5);
+    scan_sub = nh.subscribe("scan", 10, &LidarMap::callback_scan, this);
+    pos_sub = nh.subscribe("robot_pose", 1, &LidarMap::callback_pos, this);
+    grid_pub = nh.advertise<nav_msgs::OccupancyGrid>("map", 5);
 
     width = ceil((max_pos.x-min_pos.x)/cell_size);
     height = ceil((max_pos.y-min_pos.y)/cell_size);

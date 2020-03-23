@@ -27,10 +27,10 @@ public:
     {
         const double freq = 10.0;
 
-        sub_occ_grid_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &PlannerNode::mapCallback, this);
-        sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &PlannerNode::robotPoseCallback, this);
-        sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/goal", 1, &PlannerNode::goalCallback, this);
-        pub_path_ = nh_.advertise<nav_msgs::Path>("/navigation/path", 10);
+        sub_occ_grid_ = nh_.subscribe<nav_msgs::OccupancyGrid>("map", 1, &PlannerNode::mapCallback, this);
+        sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("robot_pose", 1, &PlannerNode::robotPoseCallback, this);
+        sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("navigation/goal", 1, &PlannerNode::goalCallback, this);
+        pub_path_ = nh_.advertise<nav_msgs::Path>("navigation/path", 10);
 
         tick_timer_ = nh_.createTimer(ros::Duration(1.0 / freq), &PlannerNode::tickCallback, this);
 

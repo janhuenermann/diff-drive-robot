@@ -8,7 +8,7 @@ double normalize_angle(double theta)
     else return theta;
 }
 
-OdometryMM::OdometryMM(geometry_msgs::Pose2D pos_init, double wl_init, double wr_init, ros::NodeHandle *nh) :
+OdometryMM::OdometryMM(geometry_msgs::Pose2D pos_init, double wl_init, double wr_init) :
     pos(pos_init),
     wl(wl_init),
     wr(wr_init),
@@ -17,10 +17,11 @@ OdometryMM::OdometryMM(geometry_msgs::Pose2D pos_init, double wl_init, double wr
     w(0),
     t(ros::Time(0))
 {
-    wheel_sub=nh->subscribe("/joint_states",1,&OdometryMM::callback_wheels,this);
-    imu_sub = nh->subscribe("/imu",1,&OdometryMM::callback_imu,this);
-    pos_pub = nh->advertise<geometry_msgs::Pose2D>("/robot_pose", 5);
-    vel_pub = nh->advertise<geometry_msgs::Twist>("/robot_velocity", 5);
+    ros::NodeHandle nh;
+    wheel_sub = nh.subscribe("joint_states",1,&OdometryMM::callback_wheels,this);
+    imu_sub = nh.subscribe("imu",1,&OdometryMM::callback_imu,this);
+    pos_pub = nh.advertise<geometry_msgs::Pose2D>("robot_pose", 5);
+    vel_pub = nh.advertise<geometry_msgs::Twist>("robot_velocity", 5);
 }
 
 void OdometryMM::callback_imu(const sensor_msgs::Imu& msg)

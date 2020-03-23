@@ -30,7 +30,7 @@ private:
   Profiler profiler;
 
 public:
-  OdometryMM(geometry_msgs::Pose2D pos_init, double wl_init, double wr_init, ros::NodeHandle *nh);
+  OdometryMM(geometry_msgs::Pose2D pos_init, double wl_init, double wr_init);
   void callback_wheels(const sensor_msgs::JointState& msg);
   void callback_imu(const sensor_msgs::Imu& msg);
   void publish_pos();

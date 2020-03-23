@@ -32,7 +32,7 @@ int main(int argc, char **argv){
   start_pos_s.erase(0, pos + 1);
   pos_init.y =  std::stof(start_pos_s);
   // start motion model
-  OdometryMM motion_model(pos_init,0,0,&n);
+  OdometryMM motion_model(pos_init,0,0);
   // Declare the minimal and maximal position to consider for the map and create object for generating map and read LIDAR
   Point2 min_pos, max_pos;
   pos = min_pos_s.find(',');
@@ -49,7 +49,7 @@ int main(int argc, char **argv){
   float cell_size = std::stof(cell_size_s);
   float inflation_rad = 0.25;
   // start map
-  LidarMap map(&n,min_pos,max_pos,cell_size,inflation_rad);
+  LidarMap map(min_pos,max_pos,cell_size,inflation_rad);
   ROS_INFO("Booted slam node");
   //Let objects take care of received messages
   ros::spin();

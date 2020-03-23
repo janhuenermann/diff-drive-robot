@@ -1,32 +1,57 @@
 <launch>
-    <include file="$(find bringup)/launch/world.launch" />
     <arg name="debug" default="true" />
+    <arg name="model" default="burger"/>
+    <arg name="spawn_world" default="true" />
+
+    <!-- robot/map pose arguments -->
     <arg name="goals" default="$(env GOALS)" />
     <arg name="start_pos" default="$(env X_POS),$(env Y_POS)" />
     <arg name="cell_size" default="$(env CELL_SIZE)" />
     <arg name="min_pos" default="$(env MIN_POS)" />
     <arg name="max_pos" default="$(env MAX_POS)" />
+    <arg name="x_pos" default="$(env X_POS)"/>
+    <arg name="y_pos" default="$(env Y_POS)"/>
+    <arg name="z_pos" default="0.0"/>
 
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find bringup)/config/console.conf"/>
     <env name="ROSCONSOLE_FORMAT" value="[${severity} ${node}, ${walltime}]: ${message}" />
 
-    <node name="slam" pkg="slam" type="node" output="screen">
-      <param name="start_pos" type="string" value="$(arg start_pos)" />
-      <param name="min_pos" type="string" value="$(arg min_pos)" />
-      <param name="max_pos" type="string" value="$(arg max_pos)" />
-      <param name="cell_size" type="string" value="$(arg cell_size)" />
-    </node>
-    <node name="global_planner" pkg="global_planner" type="node" output="screen" />
-    <node name="local_planner" pkg="local_planner" type="controller" output="screen" />
+    <group if="$(arg spawn_world)">
+        <include file="$(find bringup)/launch/world.launch"></include>
+    </group>
 
-    <node name="mission_planner" pkg="mission_planner" type="node" output="screen">
-      <param name="goals" type="string" value="$(arg goals)" />
-    </node>
+    <group ns="ground">
 
+        <param name="tf_prefix" value="ground_tf" />
 
-    <group if="$(arg debug)">
-        <!-- <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 4 2" output="screen" /> -->
-        <node name="show_map" pkg="draw" type="node" output="screen" />
+        <!-- Launch gazebo robot -->
+
+        <param name="robot_description" command="$(find xacro)/xacro --inorder $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro" />
+
+        <node pkg="gazebo_ros" type="spawn_model" name="spawn_model"  args="-urdf -model turtlebot3_$(arg model) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description"  output="screen" />
+
+        <!-- Launch controllers -->
+
+        <node name="slam" pkg="slam" type="node" output="screen">
+            <param name="start_pos" type="string" value="$(arg start_pos)" />
+            <param name="min_pos" type="string" value="$(arg min_pos)" />
+            <param name="max_pos" type="string" value="$(arg max_pos)" />
+            <param name="cell_size" type="string" value="$(arg cell_size)" />
+        </node>
+        <node name="global_planner" pkg="global_planner" type="node" output="screen" />
+        <node name="local_planner" pkg="local_planner" type="controller" output="screen" />
+
+        <node name="mission_planner" pkg="mission_planner" type="node" output="screen">
+            <param name="goals" type="string" value="$(arg goals)" />
+        </node>
+
+        <!-- Launch debug -->
+
+        <group if="$(arg debug)">
+            <!-- <node name="static_nav_goal" pkg="bringup" type="pub_pose2.py" args="/navigation/goal 4 2" output="screen" /> -->
+            <node name="show_map" pkg="draw" type="node" output="screen" />
+        </group>
+
     </group>
 
 </launch>

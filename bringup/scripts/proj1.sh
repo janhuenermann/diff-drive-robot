@@ -48,4 +48,4 @@ export MAX_POS="11.0,11.0"
 # export MAX_POS="6.0,6.0"
 
 export CELL_SIZE="0.05"
-roslaunch bringup robot_bringup.launch
+roslaunch bringup bringup.launch

@@ -33,7 +33,7 @@ int main(int argc, char **argv){
   }
 
   // Start mission planner
-  MissionPlanner planner(&n,goal_col);
+  MissionPlanner planner(goal_col);
   ROS_INFO("Booted MissionPlanner node");
   ros::spin();
   return 0;

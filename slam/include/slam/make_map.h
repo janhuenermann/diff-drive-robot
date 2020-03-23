@@ -75,7 +75,7 @@ private:
     }
 
 public:
-    LidarMap(ros::NodeHandle *nh, Point2 mi_pos, Point2 max_pos, double c_size, double inf_radius);
+    LidarMap(Point2 mi_pos, Point2 max_pos, double c_size, double inf_radius);
     ~LidarMap()
     {
         delete [] inflation;

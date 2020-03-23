@@ -30,13 +30,13 @@ public:
 
         ros::Duration(5.0).sleep();
 
-        pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
-        pub_traj_ = nh_.advertise<math::SplinePathData>("/navigation/trajectory", 1, true);
-        pub_pursuit_point_ = nh_.advertise<geometry_msgs::Pose2D>("/navigation/pursuit_point", 5);
+        pub_cmd_vel_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 10);
+        pub_traj_ = nh_.advertise<math::SplinePathData>("navigation/trajectory", 1, true);
+        pub_pursuit_point_ = nh_.advertise<geometry_msgs::Pose2D>("navigation/pursuit_point", 5);
 
-        sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &ControllerNode::robotPoseCallback, this);
-        sub_robot_twist_ = nh_.subscribe<geometry_msgs::Twist>("/robot_velocity", 1, &ControllerNode::robotTwistCallback, this);
-        sub_path_ = nh_.subscribe<nav_msgs::Path>("/navigation/path", 1, &ControllerNode::pathCallback, this);
+        sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("robot_pose", 1, &ControllerNode::robotPoseCallback, this);
+        sub_robot_twist_ = nh_.subscribe<geometry_msgs::Twist>("robot_velocity", 1, &ControllerNode::robotTwistCallback, this);
+        sub_path_ = nh_.subscribe<nav_msgs::Path>("navigation/path", 1, &ControllerNode::pathCallback, this);
     
         tick_timer_ = nh_.createTimer(ros::Duration(1.0 / freq), &ControllerNode::tickCallback, this);
         

@@ -22,20 +22,21 @@ class LatexWriter
 {
 public:
 
-    LatexWriter() : nh_(ros::NodeHandle("~")), trajectory_(nullptr)
+    LatexWriter() : nh_(), trajectory_(nullptr)
     {
-        if (!nh_.getParam("file_path", out_fp_))
+        ros::NodeHandle nh_param("~");
+        if (!nh_param.getParam("file_path", out_fp_))
         {
             ROS_ERROR("Could not find output file path.");
             return ;
         }
 
-        sub_map_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &LatexWriter::mapCallback, this);
-        sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &LatexWriter::robotPoseCallback, this);
-        sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/goal", 1, &LatexWriter::goalCallback, this);
-        sub_path_ = nh_.subscribe<nav_msgs::Path>("/navigation/path", 1, &LatexWriter::navigationCallback, this);
-        sub_pursuit_point_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/pursuit_point", 1, &LatexWriter::pursuitPointCallback, this);
-        sub_traj_ = nh_.subscribe<math::SplinePathData>("/navigation/trajectory", 1, &LatexWriter::trajectoryCallback, this);
+        sub_map_ = nh_.subscribe<nav_msgs::OccupancyGrid>("map", 1, &LatexWriter::mapCallback, this);
+        sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("robot_pose", 1, &LatexWriter::robotPoseCallback, this);
+        sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("navigation/goal", 1, &LatexWriter::goalCallback, this);
+        sub_path_ = nh_.subscribe<nav_msgs::Path>("navigation/path", 1, &LatexWriter::navigationCallback, this);
+        sub_pursuit_point_ = nh_.subscribe<geometry_msgs::Pose2D>("navigation/pursuit_point", 1, &LatexWriter::pursuitPointCallback, this);
+        sub_traj_ = nh_.subscribe<math::SplinePathData>("navigation/trajectory", 1, &LatexWriter::trajectoryCallback, this);
     
         tick_timer_ = nh_.createTimer(ros::Duration(1.0), &LatexWriter::tickCallback, this);
 

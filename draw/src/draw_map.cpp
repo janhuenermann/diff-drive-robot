@@ -13,6 +13,7 @@
 #include <math/util.hpp>
 
 using namespace cv;
+typedef Point3_<float> Pixel;
 
 const int PX_CELL_SIZE = 3;
 
@@ -27,12 +28,12 @@ public:
     {
         const double freq = 20.0;
 
-        sub_map_ = nh_.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &DrawMapNode::mapCallback, this);
-        sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("/robot_pose", 1, &DrawMapNode::robotPoseCallback, this);
-        sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/goal", 1, &DrawMapNode::goalCallback, this);
-        sub_path_ = nh_.subscribe<nav_msgs::Path>("/navigation/path", 1, &DrawMapNode::navigationCallback, this);
-        sub_pursuit_point_ = nh_.subscribe<geometry_msgs::Pose2D>("/navigation/pursuit_point", 1, &DrawMapNode::pursuitPointCallback, this);
-        sub_traj_ = nh_.subscribe<math::SplinePathData>("/navigation/trajectory", 1, &DrawMapNode::trajectoryCallback, this);
+        sub_map_ = nh_.subscribe<nav_msgs::OccupancyGrid>("map", 1, &DrawMapNode::mapCallback, this);
+        sub_robot_pose_ = nh_.subscribe<geometry_msgs::Pose2D>("robot_pose", 1, &DrawMapNode::robotPoseCallback, this);
+        sub_goal_ = nh_.subscribe<geometry_msgs::Pose2D>("navigation/goal", 1, &DrawMapNode::goalCallback, this);
+        sub_path_ = nh_.subscribe<nav_msgs::Path>("navigation/path", 1, &DrawMapNode::navigationCallback, this);
+        sub_pursuit_point_ = nh_.subscribe<geometry_msgs::Pose2D>("navigation/pursuit_point", 1, &DrawMapNode::pursuitPointCallback, this);
+        sub_traj_ = nh_.subscribe<math::SplinePathData>("navigation/trajectory", 1, &DrawMapNode::trajectoryCallback, this);
 
         tick_timer_ = nh_.createTimer(ros::Duration(1.0 / freq), &DrawMapNode::tickCallback, this);
 
@@ -105,6 +106,17 @@ public:
         const int w = map_.info.width;
         const int h = map_.info.height;
         const float res = map_.info.resolution;
+
+        // frame_.forEach<Pixel>([&] (Pixel &px, const int *position) -> void {
+        //     // convert x, y from frame to map coords
+        //     int x = position[0], y = position[1];
+        //     // return Point((int)std::round((double)PX_CELL_SIZE * (p.x - map_.info.origin.position.x) / map_.info.resolution), 
+        //     //              (int)std::round((double)PX_CELL_SIZE * (p.y - map_.info.origin.position.y) / map_.info.resolution));
+
+        //     px.x = n0;
+        //     px.y = n0;
+        //     px.z = n0;
+        // });
 
         for (int y = 0; y < h; ++y)
         {
