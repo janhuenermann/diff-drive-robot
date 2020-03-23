@@ -16,7 +16,9 @@ MissionPlanner::MissionPlanner(std::vector<geometry_msgs::Pose2D> goal_col)
     current_goal = 0;
     // initialize subscribers and publishers
     pos_sub = nh.subscribe("robot_pose",1,&MissionPlanner::callback_pos,this);
-    goal_pub = nh.advertise<geometry_msgs::Pose2D>("navigation/goal", 5);
+    goal_pub = nh.advertise<geometry_msgs::Pose2D>("navigation/goal", 1);
+    status_pub = nh.advertise<std_msgs::Bool>("navigation/done",1);
+    mission_done = false;
 }
 
 void MissionPlanner::callback_pos(const geometry_msgs::Pose2D& msg){
@@ -27,6 +29,8 @@ msg     message with robot coordinates
     if(calc_dist(msg,goals[current_goal])<THRESHOLD_DISTANCE){
         if(current_goal<(int)goals.size()-1){
             current_goal++;
+        }else{
+          mission_done = true;
         }
     }
     publish_goal();
@@ -36,4 +40,5 @@ void MissionPlanner::publish_goal(){
 /*Publishes the current goal point
 */
     goal_pub.publish(goals[current_goal]);
+    status_pub.publish(mission_done);
 }
