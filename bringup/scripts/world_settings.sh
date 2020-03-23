@@ -1,3 +1,8 @@
+ps aux | grep gazebo | awk '{print $2}' | while read line ; do
+    echo "Killed Gazebo $line"
+    kill -9 $line
+done
+
 export PROJ_GROUND_CELL_SIZE="0.05"
 
 case $1 in
