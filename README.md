@@ -1,4 +1,4 @@
-## Robot Project 1
+## Robot Project
 NUS, EE4308
 
 ### Setup
@@ -7,19 +7,13 @@ root directory of the workspace.
 
 ### Install
 First build the workspace:
-```
-catkin_make install -DCMAKE_BUILD_TYPE=Release
-```
+	catkin_make install -DCMAKE_BUILD_TYPE=Release
 
 ### Launch
 To launch the robot, run the following command:
-```
-roslaunch bringup robot_bringup.launch
-```
+	roslaunch bringup robot_bringup.launch
 or
-```
-roslaunch bringup proj1.sh
-```
+	roslaunch bringup proj1.sh
 to start the mission.
 
 ### TODO
@@ -36,7 +30,9 @@ to start the mission.
 - [ ] Fine-tune ground robot
 
 ### Topics
-- `/robot_pose`: geometry_msgs/Pose2D
-- `/map`: nav_msgs/OccupancyGrid
-- `/navigation/goal`: geometry_msgs/Pose2D
-- `/navigation/path`: nav_msgs/Path, global coordinates
+- `/robot_pose`: geometry\_msgs/Pose2D
+- `/map`: nav\_msgs/OccupancyGrid
+- `/navigation/goal`: geometry\_msgs/Pose2D
+- `/navigation/path`: nav\_msgs/Path, global coordinates
+
+<img src="architecture.png" alt="Architecture overview" width="660px" />
