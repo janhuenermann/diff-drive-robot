@@ -4,7 +4,6 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SETUP_SH="$DIR/../../../devel/setup.bash"
 
 source $SETUP_SH
-
 echo "Sourced $SETUP_SH"
 
 # all environment variables MUST NOT contain spaces
@@ -48,4 +47,4 @@ export MAX_POS="11.0,11.0"
 # export MAX_POS="6.0,6.0"
 
 export CELL_SIZE="0.05"
-roslaunch bringup bringup.launch
+roslaunch bringup robot_bringup.launch

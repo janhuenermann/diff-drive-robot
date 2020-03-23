@@ -17,7 +17,8 @@
     <env name="ROSCONSOLE_FORMAT" value="[${severity} ${node}, ${walltime}]: ${message}" />
 
     <group if="$(arg spawn_world)">
-        <include file="$(find bringup)/launch/world.launch"></include>
+        <include file="$(find bringup)/launch/world.launch">
+        </include>
     </group>
 
     <group ns="ground">
