@@ -24,21 +24,16 @@ to start the mission.
 
 ### TODO
 #### Part 1
-- [x] Implement the Inverse Sensor Model
-- [x] Implement Odometry Motion Model with wheel encoders
-- [x] Fuse simply with other sensor information for Odometry Motion Model
-- [x] Implement Binary Log Odds
-- [x] Implement inflation zones or potential fields to provide guarantees against collisions
-- [x] Implement General Line Algorithm **=> see `global_planner/src/thetastar.cpp`, already implemented**
+- [x] Localization (part 1)
+- [x] Global planning
+- [x] Trajectory generation and following
 
 #### Part 2
-- [x] Implement either ~~ANYA~~ or **Theta\*** (any-angle) path planner
-- [x] Post-process to get a series of turning points
-
-#### Part 3
-- [x] Project global turning points to local space
-- [x] Implement trajectory generation using splines between global turning points. Path must be collision free.
-- [x] Generate via-points on the spline and use them for pure pursuit
+- [ ] Sensor fusion
+- [ ] Extend mission planner
+- [ ] Motion control (easy)
+- [ ] Modify launch structure
+- [ ] Fine-tune ground robot
 
 ### Topics
 - `/robot_pose`: geometry_msgs/Pose2D
