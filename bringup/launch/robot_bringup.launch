@@ -4,13 +4,13 @@
     <arg name="spawn_world" default="true" />
 
     <!-- robot/map pose arguments -->
-    <arg name="goals" default="$(env GOALS)" />
-    <arg name="start_pos" default="$(env X_POS),$(env Y_POS)" />
-    <arg name="cell_size" default="$(env CELL_SIZE)" />
-    <arg name="min_pos" default="$(env MIN_POS)" />
-    <arg name="max_pos" default="$(env MAX_POS)" />
-    <arg name="x_pos" default="$(env X_POS)"/>
-    <arg name="y_pos" default="$(env Y_POS)"/>
+    <arg name="goals" default="$(env PROJ_GROUND_GOALS)" />
+    <arg name="start_pos" default="$(env PROJ_GROUND_X_POS),$(env PROJ_GROUND_Y_POS)" />
+    <arg name="cell_size" default="$(env PROJ_GROUND_CELL_SIZE)" />
+    <arg name="min_pos" default="$(env PROJ_GROUND_MIN_POS)" />
+    <arg name="max_pos" default="$(env PROJ_GROUND_MAX_POS)" />
+    <arg name="x_pos" default="$(env PROJ_GROUND_X_POS)"/>
+    <arg name="y_pos" default="$(env PROJ_GROUND_Y_POS)"/>
     <arg name="z_pos" default="0.0"/>
 
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find bringup)/config/console.conf"/>

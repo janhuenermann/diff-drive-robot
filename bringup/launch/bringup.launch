@@ -6,22 +6,29 @@
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find bringup)/config/console.conf"/>
     <env name="ROSCONSOLE_FORMAT" value="[${severity} ${node}, ${walltime}]: ${message}" />
 
+    <!-- world bringup -->
+
     <include file="$(find bringup)/launch/world.launch">
     </include>
 
-    <include if="$(arg use_timed_launch)" file="$(find timed_roslaunch)/launch/timed_roslaunch.launch">
-        <arg name="time" value="5" />
-        <arg name="pkg" value="bringup" />
-        <arg name="file" value="drone_bringup.launch" />
-        <arg name="value" value="debug:=$(arg debug) spawn_world:=false" />
-    </include>
+    <!-- robot bringup -->
+    <!-- use timed_launch to curb with gazebo issues -->
 
-    <include unless="$(arg use_timed_launch)" file="$(find bringup)/launch/drone_bringup.launch">
+    <node if="$(arg use_timed_launch)" name="robot_bringup" pkg="timed_roslaunch" type="timed_roslaunch.sh"
+          args="2 bringup robot_bringup.launch debug:=$(arg debug) spawn_world:=false" output="screen" />
+
+    <include unless="$(arg use_timed_launch)" file="$(find bringup)/launch/robot_bringup.launch">
         <arg name="debug" value="$(arg debug)" />
         <arg name="spawn_world" value="false" />
     </include>
 
-    <include file="$(find bringup)/launch/robot_bringup.launch">
+    <!-- drone bringup -->
+    <!-- use timed_launch to curb with gazebo issues -->
+
+    <node if="$(arg use_timed_launch)" name="drone_bringup" pkg="timed_roslaunch" type="timed_roslaunch.sh"
+          args="6 bringup drone_bringup.launch debug:=$(arg debug) spawn_world:=false" output="screen" />
+
+    <include unless="$(arg use_timed_launch)" file="$(find bringup)/launch/drone_bringup.launch">
         <arg name="debug" value="$(arg debug)" />
         <arg name="spawn_world" value="false" />
     </include>
