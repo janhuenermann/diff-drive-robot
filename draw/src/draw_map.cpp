@@ -13,11 +13,12 @@
 #include <math/util.hpp>
 
 using namespace cv;
-typedef Point3_<float> Pixel;
+typedef Point3_<uint8_t> Pixel;
 
 const int PX_CELL_SIZE = 3;
+const std::string WINDOW_NAME = "map";
 
-class DrawMapNode
+class DrawMapNode : public ParallelLoopBody
 {
 public:
     DrawMapNode() :
@@ -38,7 +39,27 @@ public:
         tick_timer_ = nh_.createTimer(ros::Duration(1.0 / freq), &DrawMapNode::tickCallback, this);
 
         ROS_INFO("Booting draw map node");
-        namedWindow("Map", WINDOW_AUTOSIZE);
+        namedWindow(WINDOW_NAME, WINDOW_NORMAL);
+    }
+
+    void resizeWind()
+    {
+        const double max_side = 768;
+        double out_w, out_h;
+        double ar = (double)frame_.rows / (double)frame_.cols;
+
+        if (ar > 1)
+        {
+            out_w = max_side / ar;
+            out_h = max_side;
+        }
+        else
+        {
+            out_w = max_side;
+            out_h = max_side * ar;
+        }
+
+        resizeWindow(WINDOW_NAME, (int)out_w, (int)out_h);
     }
 
     void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
@@ -49,6 +70,8 @@ public:
         {
             frame_.create(map_.info.height * PX_CELL_SIZE, map_.info.width * PX_CELL_SIZE, CV_8UC3);
             frame_data_ = (uint8_t *)frame_.data;
+
+            resizeWind();
         }
 
         received_map_ = true;
@@ -90,65 +113,81 @@ public:
 
     void tickCallback(const ros::TimerEvent& evt)
     {
-        profiler_.start();
-        draw();
-        profiler_.stop();
-        profiler_.print("drawing");
-    }
-
-    void draw()
-    {
         if (!received_map_)
         {
             return ;
         }
 
-        const int w = map_.info.width;
-        const int h = map_.info.height;
-        const float res = map_.info.resolution;
+        profiler_.start();
+        draw();
+        profiler_.stop();
+        profiler_.print("drawing");
 
-        // frame_.forEach<Pixel>([&] (Pixel &px, const int *position) -> void {
-        //     // convert x, y from frame to map coords
-        //     int x = position[0], y = position[1];
-        //     // return Point((int)std::round((double)PX_CELL_SIZE * (p.x - map_.info.origin.position.x) / map_.info.resolution), 
-        //     //              (int)std::round((double)PX_CELL_SIZE * (p.y - map_.info.origin.position.y) / map_.info.resolution));
+        imshow(WINDOW_NAME, frame_);
+        waitKey(1);
+    }
 
-        //     px.x = n0;
-        //     px.y = n0;
-        //     px.z = n0;
-        // });
+    void operator () (const cv::Range &r) const
+    {
+        const int mw = map_.info.width;
+        const int cw = PX_CELL_SIZE * 3;
+        const int mcw = cw * mw;
 
-        for (int y = 0; y < h; ++y)
+        uint8_t color;
+
+        unsigned char* rgb0;
+        unsigned char* rgb = const_cast<unsigned char *>(frame_.ptr(r.start));
+
+        const signed char* state = map_.data.data() + r.start/PX_CELL_SIZE*mw;
+        int y, k, l, x;
+
+        for (y = r.start; y != r.end; )
         {
-            for (int x = 0; x < w; ++x)
+            rgb0 = rgb;
+
+            for (x = 0; x != mw; ++x, ++state)
             {
-                const int state = map_.data[y * w + x];
-
-                switch (state)
+                if (*state == 0) // free
                 {
-                    case 0: // free
-                        drawCell(cv::Point(PX_CELL_SIZE * x, PX_CELL_SIZE * y), 0);
-                        break ;
-                    case 1: // occupied
-                        drawCell(cv::Point(PX_CELL_SIZE * x, PX_CELL_SIZE * y), 255);
-                        break ;
-                    case 2: // inflated
-                        drawCell(cv::Point(PX_CELL_SIZE * x, PX_CELL_SIZE * y), 128);
-                        break ;
-
-                    case -1: // unknown
-                    default:
-                        drawCell(cv::Point(PX_CELL_SIZE * x, PX_CELL_SIZE * y), 64);
-                        break ;
+                    color = 0;
                 }
-            }
-        }
+                else if (*state == 1) // occupied
+                {
+                    color = 255;
+                }
+                else if (*state == 2) // inflated
+                {
+                    color = 128;
+                }
+                else if (*state == -1) // unknown
+                {
+                    color = 64;
+                }
 
+                memset(rgb, color, cw);
+                rgb += cw;
+            }
+
+            ++y;
+            
+            // copy line
+            for (k = 1; k != PX_CELL_SIZE && y != r.end; ++y, ++k, rgb += mcw)
+                memcpy(rgb, rgb0, mcw);
+        }
+    }
+
+    void draw()
+    {
+        // draw map
+        cv::parallel_for_(cv::Range(0, frame_.rows), *this);
+
+        // draw trajectory
         if (trajectory_ != nullptr)
         {
             drawTrajectory();
         }
 
+        // draw waypoints
         if (received_path_ && planned_path_.poses.size() > 1)
         {
             for (int k = 1; k < planned_path_.poses.size()-1; ++k)
@@ -158,42 +197,23 @@ public:
             }
         }
 
+        // draw pursuit points
         if (received_pursuit_point_)
         {
-            drawCircle(toCVPoint(pursuit_point_), 5, 0, 255, 255);
+            drawCircle(toCVPoint(pursuit_point_), 4, 0, 255, 255);
         }
 
+        // draw pose
         if (received_pose_)
         {
             drawRobotPose(map_.info.resolution * 5);
-            // drawCircle(toCVPoint(robot_pose_), 7, 255, 0, 0);
         }
 
+        // draw goal
         if (received_nav_goal_)
         {
             drawCircle(toCVPoint(nav_goal_), 7, 0, 255, 0);
         }
-
-        double ar = (double)frame_.rows / (double)frame_.cols;
-
-        const double max_side = 768;
-        double out_w, out_h;
-
-        if (ar > 1)
-        {
-            out_w = max_side / ar;
-            out_h = max_side;
-        }
-        else
-        {
-            out_w = max_side;
-            out_h = max_side * ar;
-        }
-
-        cv::resize(frame_, output_, cv::Size((int)out_w, (int)out_h), 0, 0, CV_INTER_LINEAR);
-
-        imshow("Map", output_);
-        waitKey(1);
     }
 
     void drawRobotPose(double size)
@@ -203,26 +223,11 @@ public:
         cv::Point vertices[4];
 
         Point2 center = Point2(robot_pose_.x, robot_pose_.y);
+        Point2 a = Point2(0, len).rotate(robot_pose_.theta);
+        Point2 b = Point2(len, 0).rotate(robot_pose_.theta);
 
-        Point2 aa = Point2(w, 0).rotate(robot_pose_.theta);
-        Point2 ba = Point2(0, len).rotate(robot_pose_.theta);
-
-        Point2 ab = Point2(0, w).rotate(robot_pose_.theta);
-        Point2 bb = Point2(len, 0).rotate(robot_pose_.theta);
-
-        vertices[0] = toCVPoint(center + aa - ba);
-        vertices[1] = toCVPoint(center + aa + ba);
-        vertices[2] = toCVPoint(center - aa + ba);
-        vertices[3] = toCVPoint(center - aa - ba);
-
-        cv::fillConvexPoly(frame_, vertices, 4, Scalar(255, 0, 0));
-
-        vertices[0] = toCVPoint(center + ab - bb);
-        vertices[1] = toCVPoint(center + ab + bb);
-        vertices[2] = toCVPoint(center - ab + bb);
-        vertices[3] = toCVPoint(center - ab - bb);
-
-        cv::fillConvexPoly(frame_, vertices, 4, Scalar(255, 0, 0));
+        cv::line(frame_, toCVPoint(center - a), toCVPoint(center + a), Scalar(255, 0, 0), 2);
+        cv::arrowedLine(frame_, toCVPoint(center - b), toCVPoint(center + b), Scalar(255, 0, 0), 2, CV_AA, 0, 0.3);
     }
 
     void drawTrajectory()
@@ -262,10 +267,10 @@ public:
 
     inline void setPixel(const int &x, const int &y, const uint8_t &r, const uint8_t &g, const uint8_t &b)
     {
-        const int idx = 3 * (y * frame_.cols + x);
-        frame_data_[idx+0] = r;
-        frame_data_[idx+1] = g;
-        frame_data_[idx+2] = b;
+        unsigned char *data = frame_data_ + 3 * (y * frame_.cols + x);
+        *(data++) = r;
+        *(data++) = g;
+        *(data++) = b;
     }
 
     inline void setPixel(const cv::Point p, const uint8_t r, const uint8_t g, const uint8_t b)
@@ -275,11 +280,17 @@ public:
 
     inline void drawCell(cv::Point p, uint8_t r, uint8_t g, uint8_t b)
     {
+        unsigned char *data;
+
         for (int j = 0; j<PX_CELL_SIZE; ++j)
         {
+            data = frame_data_ + 3 * ((p.y+j) * frame_.cols + p.x);
+
             for (int i = 0; i<PX_CELL_SIZE; ++i)
             {
-                setPixel(p.x+i, p.y+j, r, g, b);
+                *(data++) = r;
+                *(data++) = g;
+                *(data++) = b;
             }
         }
     }

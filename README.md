@@ -7,13 +7,19 @@ root directory of the workspace.
 
 ### Install
 First build the workspace:
-	catkin_make install -DCMAKE_BUILD_TYPE=Release
+```bash
+catkin_make install -DCMAKE_BUILD_TYPE=Release
+```
 
 ### Launch
 To launch the robot, run the following command:
-	roslaunch bringup robot_bringup.launch
+```bash
+roslaunch bringup robot_bringup.launch
+```
 or
-	roslaunch bringup proj1.sh
+```bash
+roslaunch bringup proj1.sh
+```
 to start the mission.
 
 ### TODO
