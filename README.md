@@ -1,12 +1,15 @@
 ## Robot Project
 NUS, EE4308
 
-### Setup
-Clone this repo inside of the folder `catkin_ws/src`. After that, run `catkin_make` in the
-root directory of the workspace.
-
 ### Install
-First build the workspace:
+Make sure you have the following requirements met:
+- ROS Melodic
+- Eigen 3 for math routines
+- OpenCV 3 or higher
+- Gazebo 9 with TurtleBot
+- [hector_quadrotor](https://github.com/tu-darmstadt-ros-pkg/hector_quadrotor)
+
+To install, clone this repository inside a folder called `catkin_ws/src`. Make sure you have all your other workspaces sourced, including the workspace containing the hector_quadrotor packages. Then build the workspace by running the following command from the directory `catkin_ws`.
 ```bash
 catkin_make install -DCMAKE_BUILD_TYPE=Release
 ```
@@ -24,7 +27,7 @@ to start the mission.
 
 ### TODO
 #### Part 1
-- [x] Localization (part 1)
+- [x] Mapping and motion model
 - [x] Global planning
 - [x] Trajectory generation and following
 
