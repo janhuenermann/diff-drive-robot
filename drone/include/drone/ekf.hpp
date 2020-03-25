@@ -2,19 +2,13 @@
 #define EKF_HPP
 
 #include <ros/ros.h>
-
 #include <sensor_msgs/NavSatFix.h>
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Vector3Stamped.h>
 #include <geometry_msgs/Quaternion.h>
-
 #include <Eigen/Dense>
+#include <drone/geometry.hpp>
 
-template <int Rows> 
-using Vec = Eigen::Matrix<double, Rows, 1>;
-
-template <int Rows, int Cols> 
-using Mat = Eigen::Matrix<double, Rows, Cols>;
 
 template<unsigned int Dims>
 class BaseEKF
@@ -77,9 +71,9 @@ public:
     void correctByQuaternion(const geometry_msgs::Quaternion& msg);
     void correctByGPS(const sensor_msgs::NavSatFix& msg);
 
-    inline Vec<4> rotation()
+    inline Quaternion rotation()
     {
-        return state().segment(9, 4);
+        return { q0(), q1(), q2(), q3() };
     }
 
     // define state variables
@@ -133,5 +127,6 @@ protected:
     Vec<3> accel_bias_;
 
 };
+
 
 #endif

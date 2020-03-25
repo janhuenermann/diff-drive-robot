@@ -23,53 +23,6 @@ void BaseEKF<Dims>::correct(Vec<ZDims> z, Mat<ZDims, ZDims> R, Vec<ZDims> h_x, M
     cov_ -= K * H * cov_;
 }
 
-void ToEulerAngles(double q0, double q1, double q2, double q3, double& roll, double& pitch, double& yaw) 
-{
-    double sinp = 2 * (q0 * q2 - q3 * q1);
-
-    // roll (x-axis rotation)
-    roll = std::atan2(2 * (q0 * q1 + q2 * q3), 1 - 2 * (q1 * q1 + q2 * q2));
-
-    // pitch (y-axis rotation)
-    if (std::abs(sinp) >= 1)
-    {
-        pitch = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
-    }
-    else
-    {
-        pitch = std::asin(sinp);
-    }
-
-    // yaw (z-axis rotation)
-    yaw = std::atan2(2 * (q0 * q3 + q1 * q2), 1 - 2 * (q2 * q2 + q3 * q3));
-}
-
-// roll (X = phi), pitch(Y = theta), yaw(Z = psi)
-Mat<3,3> GetDCM(double roll, double pitch, double yaw)
-{
-    Mat<3, 3> DCM;
-
-    double cosr = cos(roll), sinr = sin(roll);
-    double cosp = cos(pitch), sinp = sin(pitch);
-    double cosy = cos(yaw), siny = sin(yaw);
-
-    DCM << cosp*cosy, -cosr*siny + sinr*sinp*cosy,  sinr*siny + cosr*sinp*cosy,
-           cosp*siny,  cosr*cosy + sinr*sinp*siny, -sinr*cosy + cosr*sinp*siny,
-               -sinp,                   sinr*cosp,                   cosr*cosp;
-
-    return DCM;
-}
-
-Mat<3,3> GetDCM(double q0, double q1, double q2, double q3)
-{
-    Mat<3, 3> DCM;
-    DCM <<  q0*q0 + q1*q1 - q2*q2 - q3*q3,               2*(q1*q2 + q0*q3),              2*(q1*q3 - q0*q2),
-                          2*(q1*q2-q0*q3),   q0*q0 - q1*q1 + q2*q2 - q3*q3,              2*(q2*q3 + q0*q1),
-                          2*(q1*q3+q0*q2),               2*(q2*q3 - q0*q1),  q0*q0 - q1*q1 - q2*q2 + q3*q3;
-
-    return DCM;
-}
-
 // [x_1, x_2, x_3, v_1, v_2, v_3, a_1, a_2, a_3, q_0, q_1, q_2, q_3, w_1, w_2, w_3]
 
 SensorEKF::SensorEKF()
@@ -207,9 +160,8 @@ void SensorEKF::correctByMagnetometer(const geometry_msgs::Vector3Stamped &msg)
     Vector3d mag(msg.vector.x, msg.vector.y, msg.vector.z);
 
     // Project magnetic field into world frame, without rotating around yaw.
-    double pitch, roll, yaw;
-    ToEulerAngles(q0(), q1(), q2(), q3(), roll, pitch, yaw);
-    mag = GetDCM(roll, pitch, 0.0) * mag;
+    EulerAngles euler = ToEulerAngles(rotation());
+    mag = GetDCM((EulerAngles){ euler.roll, euler.pitch, 0.0 }) * mag;
 
     z << -atan2(mag.y(), mag.x());
     R << 1.00;
