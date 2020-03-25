@@ -68,76 +68,70 @@ Vec<_DIMS> SensorEKF::processStep(Mat<_DIMS, _DIMS> &F, Mat<_DIMS, _DIMS> &Q)
     const double w1 = wi(0, _x), w2 = wi(1, _x), w3 = wi(2, _x);
     const double q0 = qi(0, _x), q1 = qi(1, _x), q2 = qi(2, _x), q3 = qi(3, _x);
 
-    // position
+
+    // -- Calculate Next Time-Step
+
+    // Position
     pos(x) = pos(_x) + dt * vel(_x) + dtsq/2.0 * acc(_x);
     vel(x) = vel(_x) + dt * acc(_x);
     acc(x) = acc(_x);
 
-    // quaternion
-
+    // Quaternion
     Mat<4, 4> omega;
     omega <<  0,  -w1, -w2, -w3,
              w1,    0,  w3, -w2,
              w2,  -w3,   0,  w1,
              w3,   w2, -w1,   0;
 
-    // q = exp(omega * dT) * q {approx.} = (I + dT/2 * omega) * q
+    Mat<4, 3> G; // needed for dq/dw
+    G << -q1, -q2, -q3,
+          q0, -q3,  q2,
+          q3,  q0, -q1,
+         -q2,  q1,  q0;
 
+    // q = exp(omega * dT) * q  =approx.=  (I + dt/2 * omega) * q
     Mat<4, 4> dqdq = Mat<4, 4>::Identity() + 0.5 * omega * dt;
 
     Vec<4> q_ = dqdq * q(_x);
     q(x) = q_ / q_.norm(); // normalise
     w(x) = w(_x);
 
-    // calculate jacobi
+
+    // -- Calculate Jacobi
+
     F.setZero();
 
-    // dx
     slice_diag(F, 0,0,3,3) = 1;        // dx/dx = 1
     slice_diag(F, 0,3,3,3) = dt;       // dx/dv = dt
     slice_diag(F, 0,6,3,3) = dtsq/2;   // dx/da = dt^2/2
-
-    // dv
     slice_diag(F, 3,3,3,3) = 1;        // dv/dv = 1
     slice_diag(F, 3,6,3,3) = dt;       // dv/da = dt
-
-    // da
     slice_diag(F, 6,6,3,3) = 1;        // da/da = 1
 
-    // dq/dq
-    F.block(9,9,4,4) = dqdq;
+    F.block(9,9,4,4)    = dqdq;        // dq/dq
+    F.block(9,13,4,3)   = 0.5*dt*G;    // dq/dw
 
-    // dq/dw
-    Mat<4, 3> dqdw;
-    dqdw << -0.5*dt*q1, -0.5*dt*q2, -0.5*dt*q3,
-             0.5*dt*q0, -0.5*dt*q3,  0.5*dt*q2,
-             0.5*dt*q3,  0.5*dt*q0, -0.5*dt*q1,
-            -0.5*dt*q2,  0.5*dt*q1,  0.5*dt*q0;
-
-    F.block(9,13,4,3) = dqdw;
-
-    // dw/dw
-    slice_diag(F, 13,13,3,3) = 1.0;
+    slice_diag(F, 13,13,3,3) = 1.0;    // dw/dw
 
 
-    // Process Covariance
+    // -- Calculate Process Covariance
+
     Q.setZero();
-
-    Mat<4, 3> G;
-    G <<  q1,  q2,  q3,
-         -q0,  q3, -q2,
-         -q3, -q0,  q1,
-          q2, -q1, -q0;
 
     const double var_a = 0.66, var_w = 0.33;
 
     const Mat<3, 3> cov_a = var_a * Mat<3,3>::Identity();
     const Mat<3, 3> cov_w = var_w * Mat<3,3>::Identity();
 
-    Q.block(6,6,3,3)    = cov_a * dt;
-    Q.block(9,9,4,4)    = dtsq/4.0 * G * cov_w * G.transpose();
-    Q.block(13,13,3,3)  = cov_w * dt;
+    // TODO: variance on velocity by accel noise
+    // TODO: variance on position by accel noise + vel noise
+    Q.block( 6, 6,3,3) = cov_a * dt;                           // variance of acceleration
+    Q.block( 9, 9,4,4) = dtsq/4.0 * G * cov_w * G.transpose(); // variance on quaternion introduced by noise of angular vel
+    Q.block(13,13,3,3) = cov_w * dt;                           // variance of angular vel
 
+
+    // -- Update Time
+    
     last_update_time_ = t;
 
     return x;
@@ -179,21 +173,6 @@ void SensorEKF::correctByMagnetometer(const geometry_msgs::Vector3Stamped &msg)
     H(0,12) = 2.0*(q0*c2 + q3*c1)/c3;
 
     correct<1>(z, R, hx, H);
-}
-
-Mat<3, 3> SensorEKF::getDCM(bool invert)
-{
-    double q0_ = q0();
-
-    if (invert)
-        q0_ *= -1;
-
-    Mat<3, 3> DCM;
-    DCM <<  q0_*q0_ + q1()*q1() - q2()*q2() - q3()*q3(),                      2*(q1()*q2() + q0_*q3()),                     2*(q1()*q3() - q0_*q2()),
-                                 2*(q1()*q2()-q0_*q3()),   q0_*q0_ - q1()*q1() + q2()*q2() - q3()*q3(),                     2*(q2()*q3() + q0_*q1()),
-                                 2*(q1()*q3()+q0_*q2()),                      2*(q2()*q3() - q0_*q1()),  q0_*q0_ - q1()*q1() - q2()*q2() + q3()*q3();
-
-    return DCM;
 }
 
 
