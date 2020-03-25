@@ -1,0 +1,179 @@
+# Process equations
+
+### Position
+x = x + dt * v + dt^2/2 * a
+v = v + dt * a
+a = a + noise
+
+### Quaternion
+
+dq0 = -1/2 * (q1*w1 + q2*w2 + q3*w3)
+dq1 =  1/2 * (q0*w1 + q2*w3 - q3*w2)
+dq2 =  1/2 * (q0*w2 - q1*w3 + q3*w1)
+dq3 =  1/2 * (q0*w3 + q1*w2 - q2*w1)
+
+q' = q + dt * dq
+q = q'/sqrt(q'_0^2+q'_1^2+q'_2^2+q'_3^2)
+
+w = w + noise
+
+
+# c_a_dlculating the Jacobi matrix
+
+c1 = q0^2 + q1^2 + q2^2 + q3^2
+c2 = (1/c1)^(1/2)
+c3 = c2^3
+
+c4 = dt^2*w1^2 + dt^2*w2^2 + dt^2*w3^2 + 4
+c5 = c4^(1/2)
+c6 = c5^3
+
+c7 = -2*q0 + dt*q1*w1 + dt*q2*w2 + dt*q3*w3
+c8 =  2*q2 + dt*q0*w2 - dt*q1*w3 + dt*q3*w1
+c9 =  2*q3 + dt*q0*w3 + dt*q1*w2 - dt*q2*w1
+c10 =  2*q1 + dt*q0*w1 + dt*q2*w3 - dt*q3*w2
+
+c11 = (dt*w1*c2)/c5
+c12 = (dt*w2*c2)/c5
+c13 = (dt*w3*c2)/c5
+c14 = (2*c2)/c5
+
+c15 = (dt*q1*w1 - 2*q0 + dt*q2*w2 + dt*q3*w3)/c6
+
+c16 = c8/c6
+c17 = c9/c6
+c18 = c10/c6
+
+c19 = dt^2*w1*c2
+c20 = dt^2*w2*c2
+c21 = dt^2*w3*c2
+
+c22 = dt*q0*c2/c5
+c23 = dt*q1*c2/c5
+c24 = dt*q2*c2/c5
+c25 = dt*q3*c2/c5
+
+
+# dx, dv, da
+
+dx/dx = 1
+dx/dv = dt
+dx/da = dt^2/2
+
+dv/dx = 0
+dv/dv = 1
+dv/da = dt
+
+da/dx = 0
+da/dv = 0
+da/da = 1
+
+
+# dq_t/dq_{t-1} Jacobi
+
+## d/dq0
+
+dq0/dq0 = c14 + (q0*c3*c7)/c5
+dq1/dq0 = c11 - (q0*c3*c10)/c5
+dq2/dq0 = c12 - (q0*c3*c8)/c5
+dq3/dq0 = c13 - (q0*c3*c9)/c5
+ 
+## d/dq1
+
+dq0/dq1 = (q1*c3*c7)/c5 - c11
+dq1/dq1 = c14 - (q1*c3*c10)/c5
+dq1/dq2 = - (q1*c3*c8)/c5 - c13
+dq1/dq3 = c12 - (q1*c3*c9)/c5
+
+## d/dq2
+
+dq0/dq2 = (q2*c3*c7)/c5 - c12
+dq1/dq2 = c13 - (q2*c3*c10)/c5
+dq2/dq2 = c14 - (q2*c3*c8)/c5
+dq3/dq2 = - (q2*c3*c9)/c5 - c11
+
+## d/dq3
+
+dq0/dq3 = (q3*c3*c7)/c5 - c13
+dq1/dq3 = - (q3*c3*c10)/c5 - c12
+dq2/dq3 = c11 - (q3*c3*c8)/c5
+dq3/dq3 = c14 - (q3*c3*c9)/c5
+
+
+# dq_{t}/dw_{t-1}
+
+## dq/dw1
+
+dq0/dw1 = c19*c15 - c23
+dq1/dw1 = c22 - c19*c18
+dq2/dw1 = c25 - c19*c16
+dq3/dw1 = - c24 - c19*c17
+
+## dq/dw2
+
+dq0/dw2 = c20*c15 - c24
+dq1/dw2 = - c25 - c20*c18
+dq2/dw2 = c22 - c20*c16
+dq3/dw2 = c23 - c20*c17
+ 
+## dq/dw3
+
+dq0/dw3 = c21*c15 - c25
+dq1/dw3 = c24 - c21*c18
+dq2/dw3 = - c23 - c21*c16
+dq3/dw3 = c22 - c21*c17
+
+# dw
+dw/dw = 1
+
+
+
+
+
+
+
+
+
+
+// dq/dq0
+F( 9,  9) = 1;
+F(10,  9) = dt * w1 / 2.0;
+F(11,  9) = dt * w2 / 2.0;
+F(12,  9) = dt * w3 / 2.0;
+
+// dq/dq1
+F( 9, 10) = -dt*w1/2.0;
+F(10, 10) = 1.0;
+F(11, 10) = -dt*w3/2.0;
+F(12, 10) = dt*w2/2.0;
+
+// dq/dq2
+F( 9, 11) = -dt*w2/2.0;
+F(10, 11) = dt*w3/2.0;
+F(11, 11) = 1;
+F(12, 11) = -dt*w1/2.0;
+
+// dq/dq3
+F( 9, 12) = -dt*w3/2.0;
+F(10, 12) = -dt*w2/2.0;
+F(11, 12) = dt*w1/2.0;
+F(12, 12) = 1.0;
+
+// dq/dw1
+F( 9, 13) = -dt*q1/2.0;
+F(10, 13) = dt*q0/2.0;
+F(11, 13) = dt*q3/2.0;
+F(12, 13) = -dt*q2/2.0;
+
+// dq/dw2
+F( 9, 14) = -dt*q2/2.0;
+F(10, 14) = -dt*q3/2.0;
+F(11, 14) = dt*q0/2.0;
+F(12, 14) = dt*q1/2.0;
+
+// dq/dw3
+F( 9, 15) = -dt*q3/2.0;
+F(10, 15) = dt*q2/2.0;
+F(11, 15) = -dt*q1/2.0;
+F(12, 15) = dt*q0/2.0;
+

@@ -2,11 +2,12 @@ cmake_minimum_required(VERSION 2.8.3)
 project(drone)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++17)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
     roscpp
     rospy
@@ -17,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
     math
     hector_uav_msgs
 )
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -123,10 +125,13 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIR}
 )
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
+    src/drone/ekf.cpp
+    src/drone/geometry.cpp
     src/drone/pid_controller.cpp
 )
 
@@ -139,6 +144,7 @@ add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(motion_controller src/motion_controller.cpp)
+add_executable(sensor_fusion src/sensor_fusion.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -149,9 +155,15 @@ add_executable(motion_controller src/motion_controller.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(motion_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(sensor_fusion Eigen3 ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(motion_controller
+   ${catkin_LIBRARIES}
+   ${PROJECT_NAME}
+)
+
+target_link_libraries(sensor_fusion
    ${catkin_LIBRARIES}
    ${PROJECT_NAME}
 )
