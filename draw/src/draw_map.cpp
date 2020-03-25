@@ -169,10 +169,19 @@ public:
             }
 
             ++y;
+
+            k = y % PX_CELL_SIZE;
+
+            if (k == 0)
+            {
+                continue ;
+            }
             
             // copy line
-            for (k = 1; k != PX_CELL_SIZE && y != r.end; ++y, ++k, rgb += mcw)
+            for (; k != PX_CELL_SIZE && y != r.end; ++y, ++k, rgb += mcw)
+            {
                 memcpy(rgb, rgb0, mcw);
+            }
         }
     }
 
@@ -243,6 +252,8 @@ public:
         double s = 0.0;
         Point2 p;
 
+        std::vector<cv::Point> points;
+
         while (1)
         {
             try
@@ -254,7 +265,7 @@ public:
                 break ;
             }
 
-            drawCell(toCVPoint(p), 0, 0, 255);
+            points.push_back(toCVPoint(p));
 
             if (s >= trajectory_->length)
             {
@@ -263,6 +274,8 @@ public:
 
             s = std::min(s + step_size, trajectory_->length);
         }
+
+        cv::polylines(frame_, points, false, Scalar(255, 0, 0), 1, 8);
     }
 
     inline void setPixel(const int &x, const int &y, const uint8_t &r, const uint8_t &g, const uint8_t &b)
