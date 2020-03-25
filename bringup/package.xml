@@ -49,14 +49,19 @@
   <!-- Use doc_depend for packages you need only for building documentation: -->
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
+  
   <build_depend>draw</build_depend>
+  <build_depend>drone</build_depend>
   <build_depend>global_planner</build_depend>
+  <build_depend>local_planner</build_depend>
+  <build_depend>mission_planner</build_depend>
   <build_depend>slam</build_depend>
-  <build_export_depend>draw</build_export_depend>
-  <build_export_depend>global_planner</build_export_depend>
-  <build_export_depend>slam</build_export_depend>
+
   <exec_depend>draw</exec_depend>
+  <exec_depend>drone</exec_depend>
   <exec_depend>global_planner</exec_depend>
+  <exec_depend>local_planner</exec_depend>
+  <exec_depend>mission_planner</exec_depend>
   <exec_depend>slam</exec_depend>
 
 

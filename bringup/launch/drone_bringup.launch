@@ -11,6 +11,8 @@
     </group>
 
     <group ns="drone">
+        <node pkg="drone" type="sensor_fusion" name="sensor_fusion" output="screen" />
+
         <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
             <arg name="name" value="uav" />
             <arg name="tf_prefix" value="drone_tf" />
