@@ -7,4 +7,4 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 # echo "Sourced $SETUP_SH"
 
 . "$DIR/world_settings.sh" ${1:-0}
-roslaunch bringup bringup.launch
+roslaunch bringup drone_bringup.launch

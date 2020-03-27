@@ -1,7 +1,6 @@
 #include <drone/ekf.hpp>
 
 using namespace std;
-using namespace Eigen;
 
 template<unsigned int Dims>
 void BaseEKF<Dims>::update()
@@ -90,8 +89,9 @@ Vec<_DIMS> SensorEKF::processStep(Mat<_DIMS, _DIMS> &F, Mat<_DIMS, _DIMS> &Q)
          -q2,  q1,  q0;
 
     // q = exp(omega * dT) * q  =approx.=  (I + dt/2 * omega) * q
+    // using euler integration
+    
     Mat<4, 4> dqdq = Mat<4, 4>::Identity() + 0.5 * omega * dt;
-
     Vec<4> q_ = dqdq * q(_x);
     q(x) = q_ / q_.norm(); // normalise
     w(x) = w(_x);
@@ -113,22 +113,17 @@ Vec<_DIMS> SensorEKF::processStep(Mat<_DIMS, _DIMS> &F, Mat<_DIMS, _DIMS> &Q)
 
     slice_diag(F, 13,13,3,3) = 1.0;    // dw/dw
 
-
     // -- Calculate Process Covariance
 
     Q.setZero();
 
-    const double var_a = 0.66, var_w = 0.33;
+    const double var_a = 1.00, var_w = 1.00;
 
     const Mat<3, 3> cov_a = var_a * Mat<3,3>::Identity();
     const Mat<3, 3> cov_w = var_w * Mat<3,3>::Identity();
 
-    // TODO: variance on velocity by accel noise
-    // TODO: variance on position by accel noise + vel noise
     Q.block( 6, 6,3,3) = cov_a * dt;                           // variance of acceleration
-    Q.block( 9, 9,4,4) = dtsq/4.0 * G * cov_w * G.transpose(); // variance on quaternion introduced by noise of angular vel
     Q.block(13,13,3,3) = cov_w * dt;                           // variance of angular vel
-
 
     // -- Update Time
     
@@ -143,81 +138,71 @@ void SensorEKF::update()
     BaseEKF::update();
 }
 
-Vector3d mmag;
-
 void SensorEKF::correctByMagnetometer(const geometry_msgs::Vector3Stamped &msg)
 {
-    Vec<1> z, hx;
-    Mat<1,1> R;
-    Mat<1, 16> H;
-
-    Vector3d mag(msg.vector.x, msg.vector.y, msg.vector.z);
-
-    // Project magnetic field into world frame, without rotating around yaw.
-    EulerAngles euler = ToEulerAngles(rotation());
-    mag = GetDCM((EulerAngles){ euler.roll, euler.pitch, 0.0 }) * mag;
-
-    z << -atan2(mag.y(), mag.x());
-    R << 1.00;
-
-    const double q0 = this->q0(), q1 = this->q1(), q2 = this->q2(), q3 = this->q3();
-    const double c1 = 2.0*(q0*q3 + q1*q2), c1sq = c1*c1,
-                 c2 = q0*q0 + q1*q1 - q2*q2 - q3*q3,
-                 c3 = c1*c1 + c2*c2;
-
-    hx << atan2(c1, c2);
-
-    H(0, 9) = 2.0*(q3*c2 - q0*c1)/c3;
-    H(0,10) = 2.0*(q2*c2 - q1*c1)/c3;
-    H(0,11) = 2.0*(q1*c2 + q2*c1)/c3;
-    H(0,12) = 2.0*(q0*c2 + q3*c1)/c3;
-
-    correct<1>(z, R, hx, H);
+    last_mag_.x() = msg.vector.x;
+    last_mag_.y() = msg.vector.y;
+    last_mag_.z() = msg.vector.z;
 }
-
 
 void SensorEKF::correctByIMU(const sensor_msgs::Imu& msg)
 {
-    Vec<6> z, hx;
-    Mat<6,  6> R;
-    Mat<6, 16> H;
+    Vec<7> z, hx; // observation and predicted observation
+    Mat<7, 16> H;
+    Mat<7,7> R;
 
-    R.setZero();
+    z.setZero();
+    hx.setZero();
     H.setZero();
+    R.setZero();
 
-    // Accel
+    Vec<3> w = Vec<3>(msg.angular_velocity.x,
+                      msg.angular_velocity.y,
+                      msg.angular_velocity.z);
 
-    Vec<3> lin_acc = Vector3d(msg.linear_acceleration.x,
-                              msg.linear_acceleration.y,
-                              msg.linear_acceleration.z);
+    w -= gyro_bias_;
 
-    lin_acc -= accel_bias_;
+    Vec<3> a = Vec<3>(msg.linear_acceleration.x,
+                      msg.linear_acceleration.y,
+                      msg.linear_acceleration.z);
 
-    // Gyro
+    a -= accel_bias_;
+    a *= -1;
 
-    Vec<3> ang_vel = Vector3d(msg.angular_velocity.x,
-                              msg.angular_velocity.y,
-                              msg.angular_velocity.z);
+    Vec<3> m = last_mag_;
 
-    ang_vel -= gyro_bias_;
+    Quaternion q_0 = rotation();
+    Mat<3,3> dcm = GetDCM(q_0);
 
-    // set correction params
+    Vec<3> grav(0, 0, -1.0), mag(1.0, 0.0, 0.0);
+    Vec<3> v_g = a / a.norm(), v_m = m / m.norm();
+    Vec<3> v_g_hat = dcm * grav, v_m_hat = dcm * mag;
+    Vec<3> n_a = v_g.cross(v_g_hat);
 
-    z.segment(0,3) = lin_acc; // accel z
-    z.segment(3,3) = ang_vel;  // gyro z
+    double dtheta_a = acos(v_g.dot(v_g_hat));
+    double mu_a = 1.0;
+    double cos_a = cos(mu_a * dtheta_a / 2.0),
+           sin_a = sin(mu_a * dtheta_a / 2.0);
 
-    R.diagonal().segment(0,3).array() = 2.00; // accel cov
-    R.diagonal().segment(3,3).array() = 0.33; // gyro cov
+    Quaternion q_ae(cos_a, n_a.x() * sin_a, n_a.y() * sin_a, n_a.z() * sin_a);
+    Quaternion q_est = q_ae * q_0;
 
-    hx.segment(3,3) = mu_.segment(13, 3); // accel z'
-    hx.segment(0,3) = mu_.segment( 6, 3); // gyro z'
+    cout << "Est: " << ToMatrix(q_est) << endl;
 
-    H.block(0, 6,3,3).diagonal().array() = 1.0; // jacobi accel
-    H.block(3,13,3,3).diagonal().array() = 1.0; // jacobi gyro
+    z.segment(0, 4) = ToMatrix(q_est);
+    z.segment(4, 3) = w;
 
-    // do correction
+    hx.segment(0, 4) = ToMatrix(q_0);
+    hx.segment(4, 3) = mu_.segment(13, 3);
 
-    correct<6>(z, R, hx, H);
+    H.block(0,9,4,4) = GetHamiltonDerivativeWrtRHS(q_ae);
+    // H.block(0, 9,4,4).diagonal().array() = 1;
+    H.block(4,13,3,3).diagonal().array() = 1;
+
+    R.diagonal().segment(0,4).array() = 0.01;
+    R.diagonal().segment(4,3).array() = 0.03;
+
+    correct<7>(z, R, hx, H);
 }
 
 void SensorEKF::correctByQuaternion(const geometry_msgs::Quaternion& msg)

@@ -9,7 +9,6 @@
 #include <Eigen/Dense>
 #include <drone/geometry.hpp>
 
-
 template<unsigned int Dims>
 class BaseEKF
 {
@@ -73,7 +72,7 @@ public:
 
     inline Quaternion rotation()
     {
-        return { q0(), q1(), q2(), q3() };
+        return Quaternion(q0(), q1(), q2(), q3());
     }
 
     // define state variables
@@ -122,6 +121,8 @@ public:
     Vec<_DIMS> processStep(Mat<_DIMS, _DIMS> &F, Mat<_DIMS, _DIMS> &Q);
 
 protected:
+
+    Vec<3> last_mag_;
 
     Vec<3> gyro_bias_;
     Vec<3> accel_bias_;
