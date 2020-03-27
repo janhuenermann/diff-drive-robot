@@ -1,5 +1,36 @@
 #include <drone/pid_controller.hpp>
 
+
+void ErrorLine::set_pos(geometry_msgs::Point drone_pos){
+  pos = drone_pos;
+}
+
+void ErrorLine::calc_err(geometry_msgs::Vector3 &e_line, geometry_msgs::Vector3 &e_rob){
+  double tau = dir.x*pos.x+dir.y*pos.y+dir.z*pos.z-dir.x*start.x-dir.y*start.y-dir.z*start.z;
+  geometry_msgs::Point closest_p;
+  closest_p.x = start.x + tau*dir.x;
+  closest_p.y = start.y + tau*dir.y;
+  closest_p.z = start.z + tau*dir.z;
+  e_line.x = closest_p.x-pos.x;
+  e_line.y = closest_p.y-pos.y;
+  e_line.z = closest_p.z-pos.z;
+  e_rob.x = end.x-closest_p.x;
+  e_rob.y = end.y-closest_p.y;
+  e_rob.z = end.z-closest_p.z;
+}
+
+void ErrorLine::gen_line(geometry_msgs::Point start_p,geometry_msgs::Point end_p){
+  start = start_p;
+  end = end_p;
+  dir.x = end_p.x-start_p.x;
+  dir.y = end_p.y-start_p.y;
+  dir.z = end_p.z-start_p.z;
+  end_tau = sqrt(pow(dir.x,2)+pow(dir.y,2)+pow(dir.z,2));
+  dir.x /= end_tau;
+  dir.y /= end_tau;
+  dir.z /= end_tau;
+}
+
 PIDController::PIDController():
   prev_update_time(ros::Time(0)){
   ros::NodeHandle nh;
