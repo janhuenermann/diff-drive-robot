@@ -4,6 +4,7 @@
 
 #include <nav_msgs/Path.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/PoseStamped.h>
 
@@ -24,7 +25,7 @@ public:
     DrawMapNode() :
         nh_(), frame_(),
         received_pose_(false), received_map_(false), received_path_(false), received_nav_goal_(false),
-        received_pursuit_point_(false),
+        received_pursuit_point_(false), received_drone_pos_(false), received_intersection_pos_(false),
         trajectory_(nullptr)
     {
         const double freq = 20.0;
@@ -35,6 +36,8 @@ public:
         sub_path_ = nh_.subscribe<nav_msgs::Path>("navigation/path", 1, &DrawMapNode::navigationCallback, this);
         sub_pursuit_point_ = nh_.subscribe<geometry_msgs::Pose2D>("navigation/pursuit_point", 1, &DrawMapNode::pursuitPointCallback, this);
         sub_traj_ = nh_.subscribe<math::SplinePathData>("navigation/trajectory", 1, &DrawMapNode::trajectoryCallback, this);
+        sub_intersection_ = nh_.subscribe<geometry_msgs::Pose2D>("/drone/navigation/intersection", 1, &DrawMapNode::intersectionCallback, this);
+        sub_drone_pos_ = nh_.subscribe<nav_msgs::Odometry>("/drone/ground_truth/state", 1, &DrawMapNode::dronePoseCallback, this);
 
         tick_timer_ = nh_.createTimer(ros::Duration(1.0 / freq), &DrawMapNode::tickCallback, this);
 
@@ -60,6 +63,17 @@ public:
         }
 
         resizeWindow(WINDOW_NAME, (int)out_w, (int)out_h);
+    }
+
+    void dronePoseCallback(const nav_msgs::Odometry::ConstPtr& msg){
+      drone_pos_.x = msg->pose.pose.position.x;
+      drone_pos_.y = msg->pose.pose.position.x;
+      received_drone_pos_ = true;
+    }
+
+    void intersectionCallback(const geometry_msgs::Pose2D::ConstPtr& msg){
+      intersection_pos_ = *msg;
+      received_intersection_pos_ = true;
     }
 
     void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
@@ -176,7 +190,7 @@ public:
             {
                 continue ;
             }
-            
+
             // copy line
             for (; k != PX_CELL_SIZE && y != r.end; ++y, ++k, rgb += mcw)
             {
@@ -222,6 +236,14 @@ public:
         if (received_nav_goal_)
         {
             drawCircle(toCVPoint(nav_goal_), 7, 0, 255, 0);
+        }
+
+        if (received_drone_pos_){
+          drawCircle(toCVPoint(drone_pos_), 7, 255, 211, 0);
+        }
+
+        if (received_intersection_pos_){
+          drawCircle(toCVPoint(intersection_pos_), 7, 98, 252, 3);
         }
     }
 
@@ -326,13 +348,13 @@ public:
 
     inline cv::Point toCVPoint(Point2 p)
     {
-        return Point((int)std::round((double)PX_CELL_SIZE * (p.x - map_.info.origin.position.x) / map_.info.resolution), 
+        return Point((int)std::round((double)PX_CELL_SIZE * (p.x - map_.info.origin.position.x) / map_.info.resolution),
                      (int)std::round((double)PX_CELL_SIZE * (p.y - map_.info.origin.position.y) / map_.info.resolution));
     }
 
     inline void drawCircle(cv::Point p, int radius, uint8_t r, uint8_t g, uint8_t b)
     {
-        
+
         circle(frame_, p, radius, Scalar(r, g, b), FILLED);
     }
 
@@ -348,6 +370,12 @@ protected:
 
     geometry_msgs::Pose2D nav_goal_;
     bool received_nav_goal_;
+
+    geometry_msgs::Pose2D drone_pos_;
+    bool received_drone_pos_;
+
+    geometry_msgs::Pose2D intersection_pos_;
+    bool received_intersection_pos_;
 
     geometry_msgs::Pose2D robot_pose_;
     bool received_pose_;
@@ -368,6 +396,8 @@ protected:
     ros::Subscriber sub_pursuit_point_;
     ros::Subscriber sub_robot_pose_;
     ros::Subscriber sub_traj_;
+    ros::Subscriber sub_drone_pos_;
+    ros::Subscriber sub_intersection_;
 
     ros::Timer tick_timer_;
 

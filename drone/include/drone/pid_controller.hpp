@@ -5,6 +5,23 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
+class ErrorLine{
+public:
+  ErrorLine(){}
+
+  void gen_line(geometry_msgs::Point start_p,geometry_msgs::Point end_p);
+  void set_pos(geometry_msgs::Point drone_pos);
+  void calc_err(geometry_msgs::Vector3 &e_line, geometry_msgs::Vector3 &e_rob);
+
+private:
+  geometry_msgs::Point start;
+  geometry_msgs::Point end;
+  geometry_msgs::Point pos;
+  double end_tau;
+  geometry_msgs::Vector3 dir;
+};
+
+
 class PIDController
 {
 public:

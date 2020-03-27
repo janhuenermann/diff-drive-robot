@@ -10,6 +10,9 @@
 #include <hector_uav_msgs/EnableMotors.h>
 #include <nav_msgs/Odometry.h>
 
+#include <math/SplinePathData.h>
+#include <math/spline.hpp>
+
 class ControllerNode
 {
 public:
@@ -30,11 +33,13 @@ public:
         pid.setParameters_height(p_height,i_height,d_height);
 
         pub_cmd_vel = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+        pub_intersection = nh.advertise<geometry_msgs::Pose2D>("navigation/intersection",1);
 
         sub_drone_pos = nh.subscribe<nav_msgs::Odometry>("/drone/ground_truth/state", 1, &ControllerNode::dronePoseCallback, this);
         sub_navigation_state = nh.subscribe<std_msgs::Bool>("/ground/navigation/done",1, &ControllerNode::navDoneCallback, this);
         sub_ground_goal = nh.subscribe<geometry_msgs::Pose2D>("/ground/navigation/goal", 1,&ControllerNode::navGoalCallback, this);
         sub_robot_ground_pos = nh.subscribe<geometry_msgs::Pose2D>("/ground/robot_pose", 1,&ControllerNode::groundRobCallback, this);
+        sub_traj = nh.subscribe<math::SplinePathData>("ground/navigation/trajectory", 1, &ControllerNode::groundTrajCallback, this);
         tick_timer = nh.createTimer(ros::Duration(1.0 / freq), &ControllerNode::tickCallback, this);
 
         ROS_INFO("Drone controller node booted.");
@@ -43,6 +48,49 @@ public:
     void groundRobCallback(const geometry_msgs::Pose2D::ConstPtr& msg){
       ground_rob_pos.x = msg->x;
       ground_rob_pos.y = msg->y;
+    }
+
+    void groundTrajCallback(const math::SplinePathData::ConstPtr& msg){
+      if (ground_spline != nullptr){
+          delete ground_spline;
+      }
+      ground_spline = SplinePath::fromData(*msg);
+      geometry_msgs::Point intersection = calculateNewIntersection();
+      geometry_msgs::Pose2D p;
+      p.x = intersection.x;
+      p.y = intersection.y;
+      pub_intersection.publish(p);
+    }
+
+    geometry_msgs::Point calculateNewIntersection(){
+      // check if feasable before robot reaches goal
+      double dist_on_spline = ground_spline->length;
+      geometry_msgs::Point intersection;
+      intersection.x = curr_goal_ground.x;
+      intersection.y = curr_goal_ground.y;
+      intersection.z = cruise_height;
+      double dist_drone = dist(drone_pos.position,intersection);
+      double t_drone = dist_drone/est_drone_speed;
+      double t_robot = dist_on_spline/est_ground_speed;
+      if(t_drone>t_robot) return intersection;
+      dist_on_spline = ground_spline->length/2;
+      Point2 intersection_ground;
+      double t_best = t_robot-t_drone;
+      geometry_msgs::Point P_best;
+      for(double i=0;i<1;i+=0.01){
+        intersection_ground = ground_spline->normalizedPosition(i);
+        intersection.x = intersection_ground.x;
+        intersection.y = intersection_ground.y;
+        intersection.z = cruise_height;
+        double dist_drone = dist(drone_pos.position,intersection);
+        double t_drone = dist_drone/est_drone_speed;
+        double t_robot = dist_on_spline/est_ground_speed;
+        if(std::abs(t_drone-t_robot)<t_best){
+          t_best = (std::abs(t_drone-t_robot));
+          P_best = intersection;
+        }
+      }
+      return P_best;
     }
 
     void navDoneCallback(const std_msgs::Bool::ConstPtr& msg){
@@ -145,6 +193,8 @@ protected:
   const double yaw_speed = 36.0/180*M_PI;
   const double thresh_dist = 0.3;
   const double cruise_height = 5;
+  const double est_ground_speed = 0.8;
+  const double est_drone_speed = 1.5;
 
   hector_uav_msgs::EnableMotors srv;
   ros::ServiceClient motor_client;
@@ -160,16 +210,19 @@ protected:
   geometry_msgs::Point start_pos;
   geometry_msgs::Point ground_rob_pos;
   geometry_msgs::Pose drone_pos;
+  SplinePath *ground_spline;
 
   Point2 curr_position;
   bool received_drone_pos = false;
   bool received_target = false;
 
   ros::Publisher pub_cmd_vel;
+  ros::Publisher pub_intersection;
   ros::Subscriber sub_drone_pos;
   ros::Subscriber sub_navigation_state;
   ros::Subscriber sub_ground_goal;
   ros::Subscriber sub_robot_ground_pos;
+  ros::Subscriber sub_traj;
   ros::Timer tick_timer;
 };
 
