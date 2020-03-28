@@ -8,7 +8,6 @@ find_package(catkin REQUIRED COMPONENTS
     cv_bridge
     geometry_msgs
     image_transport
-    message_generation
     nav_msgs
     roscpp
     rospy
@@ -18,18 +17,15 @@ find_package(catkin REQUIRED COMPONENTS
     actionlib_msgs
     math
 )
+
 find_package(OpenCV REQUIRED)
-generate_messages(DEPENDENCIES
-    actionlib_msgs
-    std_msgs
-)
+
 catkin_package(CATKIN_DEPENDS
     message_runtime
     actionlib_msgs
     cv_bridge
     geometry_msgs
     image_transport
-    message_generation
     nav_msgs
     roscpp
     rospy
@@ -39,24 +35,36 @@ catkin_package(CATKIN_DEPENDS
     math
 )
 
-add_executable(draw_map_cpp src/draw_map.cpp)
-set_target_properties(draw_map_cpp PROPERTIES OUTPUT_NAME node PREFIX "")
-add_dependencies(draw_map_cpp ${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_executable(draw_map_cpp 
+    src/draw_map.cpp)
+
+set_target_properties(draw_map_cpp 
+    PROPERTIES OUTPUT_NAME node PREFIX "")
+
+add_dependencies(draw_map_cpp 
+    ${${PROJECT_NAME}_EXPORTED_TARGETS} 
+    ${catkin_EXPORTED_TARGETS})
+
 target_link_libraries(draw_map_cpp
     ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
     math
 )
 
-add_executable(write_latex src/write_latex.cpp)
-set_target_properties(write_latex PROPERTIES OUTPUT_NAME write_latex PREFIX "")
-add_dependencies(write_latex ${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_executable(write_latex
+    src/write_latex.cpp)
+
+set_target_properties(write_latex 
+    PROPERTIES OUTPUT_NAME write_latex PREFIX "")
+
+add_dependencies(write_latex
+    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 target_link_libraries(write_latex
     ${catkin_LIBRARIES}
     ${OpenCV_LIBS}
     math
 )
-
 
 include_directories(
     include

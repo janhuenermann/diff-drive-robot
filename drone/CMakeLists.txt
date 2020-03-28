@@ -1,22 +1,24 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(drone)
 
-## Compile as C++11, supported in ROS Kinetic and newer
+## Compile as C++17, supported in ROS Kinetic and newer
+set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-std=c++17)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+
 find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
     roscpp
-    rospy
     geometry_msgs
     sensor_msgs
     std_msgs
     nav_msgs
     math
     hector_uav_msgs
+    drone_ekf
 )
 
 
@@ -155,7 +157,7 @@ add_executable(sensor_fusion src/sensor_fusion.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(motion_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(sensor_fusion Eigen3 ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(sensor_fusion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(motion_controller
