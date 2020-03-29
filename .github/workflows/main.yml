@@ -37,7 +37,7 @@ jobs:
         # A directory to store and save the cache
         path: ~/ros
         # An explicit key for restoring and saving the cache
-        key: ${{ROS_VERSION_CACHE}}
+        key: $ROS_VERSION_CACHE
         
     # ROS INSTALLER
     - name: install-ros
