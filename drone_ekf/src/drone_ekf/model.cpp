@@ -47,23 +47,38 @@ void System::predict(const Input &u, const double dt)
     pred.mean<VelocityState>()      = vel.mean + dt * accel.mean;
     pred.mean<AccelerationState>()  = accel.mean;
 
-    // d(q*qv)/dq
+    // dependencies:
+    // 
+    // - dq/dq, dq/dw
+    // - dw/dw
+    // - dx/dx, dx/dv, dx/da
+    // - dv/dv, dv/da
+    // - da/da
+
+    // dq/dq
     drone_ekf::diffQuaternionProductWrtP(dpq, qv);
     pred.jacobi<QuaternionState, QuaternionState>()     = 0.5 * dt * dpq;
 
-    // d(q*qv)/dqv
+    // dq/dw
     drone_ekf::diffQuaternionProductWrtQ(dpq, q);
     pred.jacobi<QuaternionState, GyroState>()           = 0.5 * dt * dpq.block<4, 3>(0, 1);
 
+    // dw/dw
     pred.jacobi<GyroState, GyroState>()                 = I3;
 
+    // dx/dx
     pred.jacobi<PositionState, PositionState>()         = I3;
+    // dx/dv
     pred.jacobi<PositionState, VelocityState>()         = dt * I3;
+    // dx/da
     pred.jacobi<PositionState, AccelerationState>()     = 0.5 * dtsq * I3;
 
+    // dv/dv
     pred.jacobi<VelocityState, VelocityState>()         = I3;
+    // dv/da
     pred.jacobi<VelocityState, AccelerationState>()     = dt * I3;
 
+    // da/da
     pred.jacobi<AccelerationState, AccelerationState>() = I3;
 }
 
@@ -71,8 +86,8 @@ void GyroMeasurement::predict(const GyroState &state)
 {
     Transform &pred = prediction;
 
-    pred.mean<0, 3>() = state.mean;
-    pred.jacobi<0, 3, GyroState>() = I3;
+    pred.mean<0,3>() = state.mean;
+    pred.jacobi<0,3, GyroState>() = I3;
 }
 
 void AccelerometerMeasurement::predict(const ModelState &state)
