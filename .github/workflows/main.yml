@@ -1,5 +1,5 @@
 # This is a basic workflow to help you get started with Actions
-name: CI
+name: catkin_build
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -9,28 +9,22 @@ on:
   pull_request:
     branches: [ master ]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-18.04
     env:
       ROS_CI_DESKTOP: "`lsb_release -cs`"  # e.g. [trusty|xenial|...]
-      CI_SOURCE_PATH: $(pwd)
-      ROSINSTALL_FILE: $CI_SOURCE_PATH/dependencies.rosinstall
-      CATKIN_OPTIONS: $CI_SOURCE_PATH/catkin.options
       ROS_PARALLEL_JOBS: '-j8 -l6'
       # Set the python path manually to include /usr/-/python2.7/dist-packages
       # as this is where apt-get installs python packages.
       PYTHONPATH: $PYTHONPATH:/usr/lib/python2.7/dist-packages:/usr/local/lib/python2.7/dist-packages
       ROS_DISTRO: melodic
-      ROS_VERSION_CACHE: $ROS_DISTRO-1
-
+      ROS_VERSION_CACHE: $(echo ROS_DISTRO)_1
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
-    
+      with:
+          path: src
     - name: cache
       uses: actions/cache@v1.1.2
       with:
@@ -38,8 +32,6 @@ jobs:
         path: ~/ros
         # An explicit key for restoring and saving the cache
         key: $ROS_VERSION_CACHE
-        
-    # ROS INSTALLER
     - name: install-ros
       run: |
           if [[ "$CACHE_HIT" == 'true' ]]; then
@@ -51,16 +43,15 @@ jobs:
             sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
             sudo apt-get update -qq
             sudo apt-get install dpkg
-            sudo apt-get install -y python-catkin-tools python-catkin-pkg python-rosdep python-wstool ros-$ROS_DISTRO-cv-bridge ros-$ROS_DISTRO-image-transport ros-$ROS_DISTRO-roslint
-            sudo apt-get install -y ros-$ROS_DISTRO-nodelet-core ros-$ROS_DISTRO-ddynamic-reconfigure
-            # Prepare rosdep to install dependencies.
+            sudo apt-get install -y ros-$ROS_DISTRO-ros-base ros-$ROS_DISTRO-ddynamic-reconfigure python-catkin-tools python-catkin-pkg python-rosdep python-wstool ros-$ROS_DISTRO-cv-bridge ros-$ROS_DISTRO-roslint
+            source /opt/ros/$ROS_DISTRO/setup.bash
             sudo rosdep init
             rosdep update --include-eol-distros  # Support EOL distros.
             # Store in cache
             sudo mkdir -p ~/ros/distro
             sudo cp --verbose --recursive --force /opt/ros/* ~/ros/distro/
           fi
-          
+
     - name: build
       run: |
         source /opt/ros/$ROS_DISTRO/setup.bash
@@ -69,6 +60,7 @@ jobs:
         catkin_make
         source devel/setup.bash
         cd ~/catkin_ws/src
-        cp --recursive --verbose $CI_SOURCE_PATH .
+        cp --recursive --verbose $GITHUB_WORKSPACE/src/ $(pwd)
         cd ..
         catkin_make
+
