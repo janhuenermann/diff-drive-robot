@@ -13,6 +13,7 @@ private:
   ros::Subscriber pos_sub;
   ros::Publisher goal_pub;
   ros::Publisher status_pub;
+  ros::Publisher end_pub;
   int current_goal;                             // index of current goal
   bool mission_done;
   const double THRESHOLD_DISTANCE = 0.20;        // min distance to goal to be considered reached

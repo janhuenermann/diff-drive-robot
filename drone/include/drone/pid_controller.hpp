@@ -5,23 +5,6 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
-class ErrorLine{
-public:
-  ErrorLine(){}
-
-  void gen_line(geometry_msgs::Point start_p,geometry_msgs::Point end_p);
-  void set_pos(geometry_msgs::Point drone_pos);
-  void calc_err(geometry_msgs::Vector3 &e_line, geometry_msgs::Vector3 &e_rob);
-
-private:
-  geometry_msgs::Point start;
-  geometry_msgs::Point end;
-  geometry_msgs::Point pos;
-  double end_tau;
-  geometry_msgs::Vector3 dir;
-};
-
-
 class PIDController
 {
 public:
@@ -29,8 +12,6 @@ public:
     PIDController();
 
     void setParameters_freq(double freq);
-    void setParameters_height(double p,double i, double d);
-    void setParameters_pos(double p,double i, double d);
 
     void set_true_pos(geometry_msgs::Point pos);
     void set_true_angles(geometry_msgs::Quaternion q);
@@ -39,41 +20,48 @@ public:
 
     void update(double &vel_x, double &vel_y,double &vel_z);
 
+    void set_phase(int phase);
+
     void publish_e(double ex, double ey, double ez);
     void publish_int(double ix, double iy, double iz);
 
-    inline double getTimeDelta()
-    {
-        return prev_time_delta;
-    }
-
 protected:
-    const double maxv_pos = 2;
-    const double maxv_height = 1;
-    const double minv_height = -0.5;
-    const double anti_windup = 0.5;
+    // Flight to stationary target
+    const double kp_xy = 1.3, ki_xy = 0, kd_xy = 0.1;
+    const double kp_z = 10, ki_z = 0.7, kd_z = 2.5;
+    // Flight to TURTLE
+    const double tp_xy = 1.7, ti_xy = 0.1, td_xy = 0.3;
+    const double tp_z = 10, ti_z = 0.7, td_z = 2.5;
+    // Start and landing
+    const double lp_xy = 1, li_xy = 0.7, ld_xy = 0;
+    const double lp_z = 8, li_z = 0, ld_z = 2;
+
+    // max params
+    const double maxv_xy = 2;
+    const double maxv_z = 1;
+    const double minv_z = -0.5;
     const double threshold_ss = 0.5;
+    const double windup_xy = 0.5;
+    const double windup_z = 0.2;
 
     double dt;
-    double p_height,i_height, d_height;
-    double p_pos,i_pos, d_pos;
+    double p_xy, i_xy, d_xy;
+    double p_z, i_z, d_z;
+    int curr_state=0;
 
-    Point2 goal_pos;
-    double goal_height;
-    Point2 drone_pos;
-    double drone_height;
+    Point2 goal_xy;
+    double goal_z;
+    Point2 drone_xy;
+    double drone_z;
     geometry_msgs::Quaternion drone_q;
-    bool height_saturated;
 
-    double max_int_pos;
-    double max_int_height;
-    double pos_integrated_x=0;
-    double pos_integrated_y=0;
-    double height_integrated=0;
-    Point2 e_prev_pos;
-    double e_prev_height;
+    double integrated_x=0;
+    double integrated_y=0;
+    double integrated_z=0;
+    Point2 e_prev_xy;
+    double e_prev_z;
+    bool saturated_z = false;
 
-    double prev_time_delta;
     ros::Time prev_update_time;
 
     ros::Publisher pub_err;

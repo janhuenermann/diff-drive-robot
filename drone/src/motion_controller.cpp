@@ -16,7 +16,7 @@
 class ControllerNode
 {
 public:
-    ControllerNode(){
+    ControllerNode():ground_spline(nullptr){
         // 0: take off 1:to goal 2:to robot 3:to start 4:land 5:done
         mission_state = 0;
         // PID params
@@ -25,21 +25,17 @@ public:
         srv.request.enable = true;
         motor_client.call(srv);
         const double freq = 100.0;
-        const double p_pos = 1.7, i_pos = 0.1, d_pos = 1.3;
-        const double p_height = 1.1, i_height = 0.01, d_height = 0.2;
 
         pid.setParameters_freq(freq);
-        pid.setParameters_pos(p_pos,i_pos,d_pos);
-        pid.setParameters_height(p_height,i_height,d_height);
 
         pub_cmd_vel = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-        pub_intersection = nh.advertise<geometry_msgs::Pose2D>("navigation/intersection",1);
+        pub_goal = nh.advertise<geometry_msgs::Pose2D>("navigation/drone_goal",1);
 
         sub_drone_pos = nh.subscribe<nav_msgs::Odometry>("/drone/ground_truth/state", 1, &ControllerNode::dronePoseCallback, this);
         sub_navigation_state = nh.subscribe<std_msgs::Bool>("/ground/navigation/done",1, &ControllerNode::navDoneCallback, this);
-        sub_ground_goal = nh.subscribe<geometry_msgs::Pose2D>("/ground/navigation/goal", 1,&ControllerNode::navGoalCallback, this);
+        sub_ground_goal = nh.subscribe<geometry_msgs::Pose2D>("/ground/navigation/last_goal", 1,&ControllerNode::navGoalCallback, this);
         sub_robot_ground_pos = nh.subscribe<geometry_msgs::Pose2D>("/ground/robot_pose", 1,&ControllerNode::groundRobCallback, this);
-        sub_traj = nh.subscribe<math::SplinePathData>("ground/navigation/trajectory", 1, &ControllerNode::groundTrajCallback, this);
+        sub_traj = nh.subscribe<math::SplinePathData>("/ground/navigation/trajectory", 1, &ControllerNode::groundTrajCallback, this);
         tick_timer = nh.createTimer(ros::Duration(1.0 / freq), &ControllerNode::tickCallback, this);
 
         ROS_INFO("Drone controller node booted.");
@@ -48,6 +44,7 @@ public:
     void groundRobCallback(const geometry_msgs::Pose2D::ConstPtr& msg){
       ground_rob_pos.x = msg->x;
       ground_rob_pos.y = msg->y;
+      ground_rob_pos.z = cruise_height;
     }
 
     void groundTrajCallback(const math::SplinePathData::ConstPtr& msg){
@@ -55,28 +52,20 @@ public:
           delete ground_spline;
       }
       ground_spline = SplinePath::fromData(*msg);
-      geometry_msgs::Point intersection = calculateNewIntersection();
-      geometry_msgs::Pose2D p;
-      p.x = intersection.x;
-      p.y = intersection.y;
-      pub_intersection.publish(p);
+      goal_ground_rob = calculateNewIntersection();
     }
 
     geometry_msgs::Point calculateNewIntersection(){
       // check if feasable before robot reaches goal
       double dist_on_spline = ground_spline->length;
       geometry_msgs::Point intersection;
-      intersection.x = curr_goal_ground.x;
-      intersection.y = curr_goal_ground.y;
+      intersection.x = ground_rob_pos.x;
+      intersection.y = ground_rob_pos.y;
       intersection.z = cruise_height;
-      double dist_drone = dist(drone_pos.position,intersection);
-      double t_drone = dist_drone/est_drone_speed;
-      double t_robot = dist_on_spline/est_ground_speed;
-      if(t_drone>t_robot) return intersection;
-      dist_on_spline = ground_spline->length/2;
-      Point2 intersection_ground;
-      double t_best = t_robot-t_drone;
+      double i_best;
       geometry_msgs::Point P_best;
+      double t_best=-1;
+      Point2 intersection_ground;
       for(double i=0;i<1;i+=0.01){
         intersection_ground = ground_spline->normalizedPosition(i);
         intersection.x = intersection_ground.x;
@@ -84,8 +73,8 @@ public:
         intersection.z = cruise_height;
         double dist_drone = dist(drone_pos.position,intersection);
         double t_drone = dist_drone/est_drone_speed;
-        double t_robot = dist_on_spline/est_ground_speed;
-        if(std::abs(t_drone-t_robot)<t_best){
+        double t_robot = dist_on_spline*i/est_ground_speed;
+        if(std::abs(t_drone-t_robot)<t_best || t_best<0){
           t_best = (std::abs(t_drone-t_robot));
           P_best = intersection;
         }
@@ -99,8 +88,8 @@ public:
 
     void navGoalCallback(const geometry_msgs::Pose2D::ConstPtr& msg){
       received_target = true;
-      curr_goal_ground.x = msg->x;
-      curr_goal_ground.y = msg->y;
+      goal_ground.x = msg->x;
+      goal_ground.y = msg->y;
     }
 
     void dronePoseCallback(const nav_msgs::Odometry::ConstPtr& msg){
@@ -121,17 +110,15 @@ public:
     }
 
     void tickCallback(const ros::TimerEvent& evt){
-      ROS_INFO("d %f",dist(drone_pos.position,goal_pos));
       if(!received_drone_pos) return;
       if(mission_state == 5) return;
 
-      if(mission_state == 1 || mission_state == 2){
-        if(dist(drone_pos.position,goal_pos)<thresh_dist){
-          if(mission_state == 1){
-            mission_state = 2;
-          }else{
+
+      if(dist(drone_pos.position,goal_pos)<thresh_dist && mission_state == 1){
+          mission_state = 2;
+      }else{
+        if(dist(drone_pos.position,ground_rob_pos)<thresh_dist && mission_state == 2){
             mission_state = 1;
-          }
         }
       }
 
@@ -157,14 +144,13 @@ public:
         goal_w = 0;
       }
       if(mission_state == 1){
-        goal_pos.x = curr_goal_ground.x;
-        goal_pos.y = curr_goal_ground.y;
+        goal_pos.x = goal_ground.x;
+        goal_pos.y = goal_ground.y;
         goal_pos.z = cruise_height;
         goal_w = yaw_speed;
       }
       if(mission_state == 2){
-        goal_pos = ground_rob_pos;
-        goal_pos.z = cruise_height;
+        goal_pos = goal_ground_rob;
         goal_w = yaw_speed;
       }
       if(mission_state == 3){
@@ -177,6 +163,8 @@ public:
         goal_w = 0;
       }
 
+      pid.set_phase(mission_state);
+
       geometry_msgs::Twist twist;
       double vx,vy,vz;
       pid.set_target_pos(goal_pos);
@@ -187,14 +175,18 @@ public:
       twist.angular.z = goal_w;
 
       pub_cmd_vel.publish(twist);
+      geometry_msgs::Pose2D p;
+      p.x = goal_pos.x;
+      p.y = goal_pos.y;
+      pub_goal.publish(p);
     }
 
 protected:
   const double yaw_speed = 36.0/180*M_PI;
-  const double thresh_dist = 0.3;
+  const double thresh_dist = 0.2;
   const double cruise_height = 5;
-  const double est_ground_speed = 0.8;
-  const double est_drone_speed = 1.5;
+  const double est_ground_speed = 0.4;
+  const double est_drone_speed = 1;
 
   hector_uav_msgs::EnableMotors srv;
   ros::ServiceClient motor_client;
@@ -204,11 +196,12 @@ protected:
   int mission_state;
   bool ground_done = false;
 
-  Point2 curr_goal_ground;
+  Point2 goal_ground;
   geometry_msgs::Point goal_pos;
   double goal_w;
   geometry_msgs::Point start_pos;
   geometry_msgs::Point ground_rob_pos;
+  geometry_msgs::Point goal_ground_rob;
   geometry_msgs::Pose drone_pos;
   SplinePath *ground_spline;
 
@@ -217,7 +210,7 @@ protected:
   bool received_target = false;
 
   ros::Publisher pub_cmd_vel;
-  ros::Publisher pub_intersection;
+  ros::Publisher pub_goal;
   ros::Subscriber sub_drone_pos;
   ros::Subscriber sub_navigation_state;
   ros::Subscriber sub_ground_goal;

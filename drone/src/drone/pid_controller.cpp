@@ -1,36 +1,5 @@
 #include <drone/pid_controller.hpp>
 
-
-void ErrorLine::set_pos(geometry_msgs::Point drone_pos){
-  pos = drone_pos;
-}
-
-void ErrorLine::calc_err(geometry_msgs::Vector3 &e_line, geometry_msgs::Vector3 &e_rob){
-  double tau = dir.x*pos.x+dir.y*pos.y+dir.z*pos.z-dir.x*start.x-dir.y*start.y-dir.z*start.z;
-  geometry_msgs::Point closest_p;
-  closest_p.x = start.x + tau*dir.x;
-  closest_p.y = start.y + tau*dir.y;
-  closest_p.z = start.z + tau*dir.z;
-  e_line.x = closest_p.x-pos.x;
-  e_line.y = closest_p.y-pos.y;
-  e_line.z = closest_p.z-pos.z;
-  e_rob.x = end.x-closest_p.x;
-  e_rob.y = end.y-closest_p.y;
-  e_rob.z = end.z-closest_p.z;
-}
-
-void ErrorLine::gen_line(geometry_msgs::Point start_p,geometry_msgs::Point end_p){
-  start = start_p;
-  end = end_p;
-  dir.x = end_p.x-start_p.x;
-  dir.y = end_p.y-start_p.y;
-  dir.z = end_p.z-start_p.z;
-  end_tau = sqrt(pow(dir.x,2)+pow(dir.y,2)+pow(dir.z,2));
-  dir.x /= end_tau;
-  dir.y /= end_tau;
-  dir.z /= end_tau;
-}
-
 PIDController::PIDController():
   prev_update_time(ros::Time(0)){
   ros::NodeHandle nh;
@@ -42,25 +11,11 @@ void PIDController::setParameters_freq(double freq){
   dt = 1.0 / freq;
 }
 
-void PIDController::setParameters_height(double p,double i, double d){
-  p_height = p;
-  i_height = i;
-  d_height = d;
-  if(i>0) max_int_height = anti_windup/i;
-}
-
-void PIDController::setParameters_pos(double p,double i, double d){
-  p_pos = p;
-  i_pos = i;
-  d_pos = d;
-  if(i>0) max_int_pos = anti_windup/i;
-}
-
 
 void PIDController::set_true_pos(geometry_msgs::Point pos){
-    drone_pos.x = pos.x;
-    drone_pos.y = pos.y;
-    drone_height = pos.z;
+    drone_xy.x = pos.x;
+    drone_xy.y = pos.y;
+    drone_z = pos.z;
 }
 
 void PIDController::set_true_angles(geometry_msgs::Quaternion q){
@@ -68,9 +23,9 @@ void PIDController::set_true_angles(geometry_msgs::Quaternion q){
 }
 
 void PIDController::set_target_pos(geometry_msgs::Point target){
-    goal_pos.x = target.x;
-    goal_pos.y = target.y;
-    goal_height = target.z;
+    goal_xy.x = target.x;
+    goal_xy.y = target.y;
+    goal_z = target.z;
 }
 
 void PIDController::publish_e(double ex, double ey, double ez){
@@ -89,55 +44,81 @@ void PIDController::publish_int(double ix, double iy, double iz){
   pub_int.publish(i);
 }
 
-void PIDController::update(double &vel_x, double &vel_y,double &vel_z){
-    prev_time_delta = (ros::Time::now() - prev_update_time).toSec();
+void PIDController::set_phase(int phase){
+  if(phase!=curr_state){
+    integrated_x = 0;
+    integrated_y = 0;
+  }
+  curr_state = phase;
+  switch (phase) {
+    case 0:
+    case 4:
+    p_xy = lp_xy; i_xy = li_xy; d_xy = ld_xy;
+    p_z = lp_z; i_z = li_z; d_z = ld_z;
+    break;
+  case 1:
+    p_xy = tp_xy; i_xy = ti_xy; d_xy = td_xy;
+    p_z = tp_z; i_z = ti_z; d_z = td_z;
+    break;
+  case 2:
+  case 3:
+    p_xy = kp_xy; i_xy = ki_xy; d_xy = kd_xy;
+    p_z = kp_z; i_z = ki_z; d_z = kd_z;
+  break;
+  }
+}
 
-    double e_pos_x = goal_pos.x - drone_pos.x;
-    double e_pos_y = goal_pos.y - drone_pos.y;
-    double e_height = goal_height - drone_height;
-    publish_e(e_pos_x,e_pos_y,e_height);
+void PIDController::update(double &vel_x, double &vel_y,double &vel_z){
+    double time_delta = (ros::Time::now() - prev_update_time).toSec();
+
+    double e_x = goal_xy.x - drone_xy.x;
+    double e_y = goal_xy.y - drone_xy.y;
+    double e_z = goal_z - drone_z;
+    publish_e(e_x,e_y,e_z);
 
     // Velocities in world frame
-    double vel_x_w = p_pos*e_pos_x + i_pos*pos_integrated_x + d_pos*(e_pos_x-e_prev_pos.x);
-    double vel_y_w = p_pos*e_pos_y + i_pos*pos_integrated_y + d_pos*(e_pos_y-e_prev_pos.y);
-    double vel_z_w = p_height*e_height + i_height*height_integrated + d_height*(e_height-e_prev_height);
-    double abs_vel_pos = sqrt(pow(vel_x_w,2)+pow(vel_y_w,2));
+    double vel_x_w = p_xy*e_x + i_xy*integrated_x + d_xy*(e_x-e_prev_xy.x)/time_delta;
+    double vel_y_w = p_xy*e_y + i_xy*integrated_y + d_xy*(e_y-e_prev_xy.y)/time_delta;
+    double vel_z_w = p_z*e_z + i_z*integrated_z + d_z*(e_z-e_prev_z)/time_delta;
 
-    if(abs_vel_pos>maxv_pos){
-      vel_x_w = maxv_pos*(vel_x_w/abs_vel_pos);
-      vel_y_w = maxv_pos*(vel_y_w/abs_vel_pos);
+    double abs_vel_xy = sqrt(pow(vel_x_w,2)+pow(vel_y_w,2));
+    if(abs_vel_xy>maxv_xy){
+      vel_x_w = maxv_xy*(vel_x_w/abs_vel_xy);
+      vel_y_w = maxv_xy*(vel_y_w/abs_vel_xy);
     }
-    vel_z_w = std::min(std::max(minv_height,vel_z_w),maxv_height);
-    height_saturated = false;
-    if(vel_z_w==minv_height || vel_z_w==maxv_height) height_saturated = true;
+    vel_z_w = std::min(std::max(minv_z,vel_z_w),maxv_z);
+    saturated_z = false;
+    if(vel_z_w==minv_z || vel_z_w==maxv_z) saturated_z = true;
+
     // Convert velocities to robot frame
-    tf::Quaternion q(drone_q.x, drone_q.y, drone_q.z, drone_q.w);
+    tf::Quaternion q(drone_q.x, drone_q.y, drone_q.z,drone_q.w);
     tf::Quaternion p(vel_x_w,vel_y_w,vel_z_w,0);
     tf::Quaternion pd = q.inverse()*p*q;
     vel_x = pd.getX();
     vel_y = pd.getY();
     vel_z = pd.getZ();
 
-    if(abs(e_pos_x)>threshold_ss){
-      pos_integrated_x = 0;
+    if(abs(e_x)>threshold_ss){
+      integrated_x = 0;
     }else{
-      pos_integrated_x = std::min(std::max(pos_integrated_x+e_pos_x*dt,-max_int_pos),max_int_pos);
+      integrated_x = std::min(std::max(integrated_x+i_xy*e_x*time_delta,-windup_xy),windup_xy);
+    }
+    if(abs(e_y)>threshold_ss){
+      integrated_y = 0;
+    }else{
+      integrated_y = std::min(std::max(integrated_y+i_xy*e_y*time_delta,-windup_xy),windup_xy);
+    }
+    if(saturated_z){
+        integrated_z = 0;
+    }else{
+        integrated_z = std::min(std::max(integrated_z+i_z*e_z*time_delta,-windup_z),windup_z);
     }
 
-    if(abs(e_pos_y)>threshold_ss){
-      pos_integrated_y = 0;
-    }else{
-      pos_integrated_y = std::min(std::max(pos_integrated_y+e_pos_y*dt,-max_int_pos),max_int_pos);
-    }
-    if(height_saturated){
-        height_integrated = 0;
-    }else{
-        height_integrated = std::min(std::max(height_integrated+e_height*dt,-max_int_height),max_int_height);
-    }
-    publish_int(pos_integrated_x,pos_integrated_y,height_integrated);
-    e_prev_pos.x = e_pos_x;
-    e_prev_pos.y = e_pos_y;
-    e_prev_height = e_height;
+    publish_int(integrated_x,integrated_y,integrated_z);
+
+    e_prev_xy.x = e_x;
+    e_prev_xy.y = e_y;
+    e_prev_z = e_z;
 
     prev_update_time = ros::Time::now();
 }

@@ -18,6 +18,7 @@ MissionPlanner::MissionPlanner(std::vector<geometry_msgs::Pose2D> goal_col)
     pos_sub = nh.subscribe("robot_pose",1,&MissionPlanner::callback_pos,this);
     goal_pub = nh.advertise<geometry_msgs::Pose2D>("navigation/goal", 1);
     status_pub = nh.advertise<std_msgs::Bool>("navigation/done",1);
+    end_pub = nh.advertise<geometry_msgs::Pose2D>("navigation/last_goal",1);
     mission_done = false;
 }
 
@@ -45,4 +46,5 @@ void MissionPlanner::publish_goal()
     std_msgs::Bool msg;
     msg.data = mission_done;
     status_pub.publish(msg);
+    end_pub.publish(goals[(int)goals.size()-1]);
 }
