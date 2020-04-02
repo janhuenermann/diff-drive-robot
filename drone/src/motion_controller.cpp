@@ -24,7 +24,7 @@ public:
         motor_client = nh.serviceClient<hector_uav_msgs::EnableMotors>("enable_motors");
         srv.request.enable = true;
         motor_client.call(srv);
-        const double freq = 100.0;
+        const double freq = 50.0;
 
         pid.setParameters_freq(freq);
 
@@ -77,49 +77,6 @@ public:
         double t_drone = dist_drone/est_drone_speed;
         double t_robot = dist_on_spline*i/est_ground_speed;
         if(std::abs(t_drone-t_robot)<t_best || t_best<0){
-          t_best = (std::abs(t_drone-t_robot));
-          P_best = intersection;
-        }
-      }
-      return P_best;
-    }
-
-    void groundTrajCallback(const math::SplinePathData::ConstPtr& msg){
-      if (ground_spline != nullptr){
-          delete ground_spline;
-      }
-      ground_spline = SplinePath::fromData(*msg);
-      geometry_msgs::Point intersection = calculateNewIntersection();
-      geometry_msgs::Pose2D p;
-      p.x = intersection.x;
-      p.y = intersection.y;
-      pub_intersection.publish(p);
-    }
-
-    geometry_msgs::Point calculateNewIntersection(){
-      // check if feasable before robot reaches goal
-      double dist_on_spline = ground_spline->length;
-      geometry_msgs::Point intersection;
-      intersection.x = curr_goal_ground.x;
-      intersection.y = curr_goal_ground.y;
-      intersection.z = cruise_height;
-      double dist_drone = dist(drone_pos.position,intersection);
-      double t_drone = dist_drone/est_drone_speed;
-      double t_robot = dist_on_spline/est_ground_speed;
-      if(t_drone>t_robot) return intersection;
-      dist_on_spline = ground_spline->length/2;
-      Point2 intersection_ground;
-      double t_best = t_robot-t_drone;
-      geometry_msgs::Point P_best;
-      for(double i=0;i<1;i+=0.01){
-        intersection_ground = ground_spline->normalizedPosition(i);
-        intersection.x = intersection_ground.x;
-        intersection.y = intersection_ground.y;
-        intersection.z = cruise_height;
-        double dist_drone = dist(drone_pos.position,intersection);
-        double t_drone = dist_drone/est_drone_speed;
-        double t_robot = dist_on_spline/est_ground_speed;
-        if(std::abs(t_drone-t_robot)<t_best){
           t_best = (std::abs(t_drone-t_robot));
           P_best = intersection;
         }
@@ -231,8 +188,8 @@ protected:
   const double thresh_dist = 0.2;
   const double cruise_height = 5;
 
-  const double est_ground_speed = 0.8;
-  const double est_drone_speed = 1.5;
+  const double est_ground_speed = 0.4;
+  const double est_drone_speed = 1.3;
 
   hector_uav_msgs::EnableMotors srv;
   ros::ServiceClient motor_client;
