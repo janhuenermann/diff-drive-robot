@@ -184,7 +184,7 @@ public:
     }
 
 protected:
-  const double yaw_speed = 36.0/180*M_PI;
+  const double yaw_speed = 360.0/180*M_PI;
   const double thresh_dist = 0.2;
   const double cruise_height = 5;
 

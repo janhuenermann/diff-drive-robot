@@ -8,7 +8,6 @@ add_compile_options(-std=c++17)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-
 find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
     roscpp
@@ -135,6 +134,7 @@ add_library(${PROJECT_NAME}
     # src/drone/ekf.cpp
     # src/drone/geometry.cpp
     src/drone/pid_controller.cpp
+    src/drone/gps_utils.cpp
 )
 
 ## Add cmake target dependencies of the library
@@ -146,7 +146,11 @@ add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(motion_controller src/motion_controller.cpp)
+<<<<<<< HEAD
 add_executable(sensor_fusion src/sensor_fusion.cpp)
+=======
+add_executable(gps_test src/gps_coor.cpp)
+>>>>>>> 6e98436... added gps position convertion class
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -157,10 +161,18 @@ add_executable(sensor_fusion src/sensor_fusion.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(motion_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+<<<<<<< HEAD
 add_dependencies(sensor_fusion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+=======
+add_dependencies(gps_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+>>>>>>> 6e98436... added gps position convertion class
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(motion_controller
+   ${catkin_LIBRARIES}
+   ${PROJECT_NAME}
+)
+target_link_libraries(gps_test
    ${catkin_LIBRARIES}
    ${PROJECT_NAME}
 )
