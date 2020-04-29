@@ -32,8 +32,6 @@ include_directories(
 
 ## C++ library
 add_library(${PROJECT_NAME}
-    src/drone_ekf/ekf.cpp
-    src/drone_ekf/state.cpp
     src/drone_ekf/model.cpp
     src/drone_ekf/math.cpp
 )

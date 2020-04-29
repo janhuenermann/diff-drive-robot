@@ -132,8 +132,8 @@ include_directories(
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
-    src/drone/ekf.cpp
-    src/drone/geometry.cpp
+    # src/drone/ekf.cpp
+    # src/drone/geometry.cpp
     src/drone/pid_controller.cpp
 )
 
@@ -168,6 +168,7 @@ target_link_libraries(motion_controller
 target_link_libraries(sensor_fusion
    ${catkin_LIBRARIES}
    ${PROJECT_NAME}
+   drone_ekf
 )
 
 #############

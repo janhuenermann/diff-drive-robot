@@ -6,6 +6,7 @@
  * EKF's state.
  */
 
+#include <drone_ekf/eigen/Addons.h>
 #include <drone_ekf/types.hpp>
 
 #include <Eigen/Dense>
@@ -57,6 +58,9 @@ namespace drone_ekf
         using State<N>::mean;
         using State<N>::cov;
 
+        typedef SubState<Me, 0, N> SRef; // StateRef
+
+
         struct Data
         {
             StateVec mean;
@@ -70,17 +74,21 @@ namespace drone_ekf
         };
 
         /** Members */
-        template<unsigned int Index, unsigned int M>
-        SubState<Me, Index, M> getSubState();
-
         template<typename S>
-        S getSubState();
+        inline S getSubState()
+        {
+            return S(*this);
+        }
 
-        /** State constructor */
-        inline static Me construct(Me &state) { return state; }
 
         /** Properties */
         Data storage;
+
+
+        static SRef *createRefFromFullState(Me &st)
+        {
+            return new SRef(st);
+        }
 
     };
 
@@ -91,22 +99,38 @@ namespace drone_ekf
 
     public:
 
-        static_assert(is_base_of_any<FullState, OwnerState>{}, "OwnerState must be of FullState type");
-        static_assert(OwnerState::Dims > Index + N, "SubState range is out of bounds");
-
-        static const unsigned int SegmentIndex = Index;
-
         using Me = SubState<OwnerState, Index, N>;
-        using State<N>::StateVec;
-        using State<N>::StateCov;
 
-        SubState(OwnerState &owner) :
-            State<N>(owner.mean.segment<N>(Index),
-                     owner.cov.block<N,N>(Index, Index)) {};
+        static const int SegmentIndex = Index;
 
-        /** State constructor */
-        inline static Me construct(OwnerState &state) { return state.template getSubState<Index, N>(); };
+        typedef OwnerState Owner;
+        typedef Me SRef; // StateRef
 
+        SubState(OwnerState &st) :
+            State<N>(st.mean.template segment<N>(Index),
+                     st.cov.template block<N, N>(Index,Index)),
+            owner(st)
+        {}
+
+        template<typename S>
+        inline S getSubState()
+        {
+            return owner.template getSubState<S>();
+        }
+
+        template<typename S>
+        inline S *getSubStateRef()
+        {
+            return S::createRefFromFullState(owner); // owner.template getSubState<S>();
+        }
+
+        OwnerState &owner;
+
+        static SRef *createRefFromFullState(OwnerState &st)
+        {
+            return new Me(st);
+        }
+        
     };
 
 };

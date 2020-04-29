@@ -1,100 +1,156 @@
 #ifndef EKF_MEASUREMENT_HPP
 #define EKF_MEASUREMENT_HPP
 
+#include <ros/ros.h>
+#include <iostream>
+
+#include <drone_ekf/eigen/Addons.h>
 #include <drone_ekf/state.hpp>
 
 
 namespace drone_ekf
 {
 
-    /** N = dims of measurement */
-    /** S = State class i.e. SubState, State, etc. */
+    using namespace std;
 
-    template<unsigned int N, typename State>
-    struct Measurement : public GaussianVariable<N>
+    /**
+     *  Transforms input := Vector<Dims> to an intermediate representation
+     *  z := Vector<IntermediateReprDims>.
+     *
+     *  Equally, transforms a state := State (could be a substate) into
+     *  the intermediate representation zhat := Vector<IntermediateReprDims>.
+     */
+
+    template<unsigned int Dims, typename State, unsigned int IntermediateReprDims>
+    struct Measurement : public GaussianVector<Dims>
     {
-        
-        static_assert(N > 0);
+        static_assert(IntermediateReprDims > 0);
         static_assert(is_base_of_any<drone_ekf::State, State>{});
 
-        using GaussianVariable<N>::Dims;
+        static const int IntermediateDims = IntermediateReprDims;
+
+        typedef State StateType;
+        typedef typename State::SRef StateRef;
+
+        using GaussianVector<Dims>::cov;
+
         using MeasurementVec = Vec<Dims>;
         using MeasurementCov = Mat<Dims, Dims>;
 
-        /** Transform state -> measurement */
-        struct Transform
-        {
-            using StateJacobi = Mat<Dims, State::Dims>;
-
-            MeasurementVec zhat;
-            StateJacobi H;
-
-            /**
-             * Returns reference to part of the transformed mean. 
-             */
-            template <unsigned int K, unsigned int M> 
-            inline Ref< Vec<M> > mean()
-            {
-                // make sure values are in bounds
-                static_assert(K+M <= N && K >= 0, "Measurement out of bounds");
-
-                return zhat.template segment<M>(K);
-            }
-
-            /**
-             * Returns reference to part of the Jacobian.
-             * Specifically, zhat(K:M) wrt. state.
-             */
-            template <unsigned int K, unsigned int M, typename WrtStateType = State>
-            inline Ref< Mat<M, WrtStateType::Dims> > jacobi()
-            {
-                // make sure the state is in bounds
-                static_assert(WrtStateType::SegmentIndex >= State::SegmentIndex, "Jacobi out of bounds");
-                static_assert(WrtStateType::SegmentIndex + WrtStateType::Dims <= State::SegmentIndex + State::Dims, "Jacobi out of bounds");
-                static_assert(K+M <= N && K >= 0, "Measurement out of bounds");
-
-                return H.template block<M, WrtStateType::Dims>(K, WrtStateType::SegmentIndex - State::SegmentIndex);
-            }
-        };
+        using PredictionTransform = StateTransform<State, IntermediateReprDims>;
+        using MeasurementTransform = Transform<Dims, IntermediateReprDims>;
 
         struct Correction
         {
             // some tmp params
-            Vec<Dims> y;
-            Mat<Dims, Dims> S;
-            Mat<State::Dims, Dims> K;
+            Vec<IntermediateReprDims> y;
+            Mat<IntermediateReprDims, IntermediateReprDims> S;
+            Mat<State::Dims, IntermediateReprDims> K;
         };
 
-        Measurement()
+        Measurement() :
+            GaussianVector<Dims>(),
+            state(nullptr)
+        {}
+
+        virtual void update()
         {
-            mean.setZero();
-            cov.setZero();            
-        };
+            assert(state != nullptr);
 
-        /**
-         * Updates the prediction
-         * @param state State
-         */
-        virtual void predict(const State &state);
+            // run
+            transform();
+            predict();
 
-
-        inline void update(MeasurementVec mu, MeasurementCov var)
-        {
-            mean = mu;
-            cov = var;
+            // update covariances of intermediate representation
+            measured.projectCov(cov);
+            predicted.projectCov(state->cov);
         }
 
-        inline Ref<MeasurementVec> getMean() { return mean; };
-        inline Ref<MeasurementCov> getCov() { return cov; };
+        virtual void applied() {}
 
-        MeasurementVec mean;
-        MeasurementCov cov;
+        /**
+         * Transforms the state into the intermediate representation.
+         * @param state State
+         */
+        virtual void predict() {}
 
-        Transform prediction;
+        /**
+         * Transforms the measured value into
+         * the intermediate representation.
+         */
+        virtual void transform() {}
+
+        /** Sets measurement input */
+        virtual void set(MeasurementVec mu, MeasurementCov var, ros::Time time)
+        {
+            GaussianVector<Dims>::set(mu, var);
+            stamp = time;
+        }
+
+        virtual void attach(StateRef *st)
+        {
+            assert(state == nullptr && st != nullptr);
+            state = st;
+        }
+
+        ~Measurement()
+        {
+            delete state;
+        }
+
+
+        // attached filter state
+        StateRef *state;
+
+        // time-stamp of measurement
+        ros::Time stamp;
+
+        // intermediate-representation
+        PredictionTransform predicted;
+        MeasurementTransform measured;
+
+        // correction for state, used as storage
         Correction correction;
+
+        bool valid = true;
 
     };
 
+
+    template<unsigned int Dims, typename State>
+    struct StateMeasurement : public Measurement<Dims, State, Dims>
+    {
+
+        using MeasurementVec = Vec<Dims>;
+        using MeasurementCov = Mat<Dims, Dims>;
+        using typename Measurement<Dims, State, Dims>::StateRef;
+
+        using GaussianVector<Dims>::mean;
+        using GaussianVector<Dims>::cov;
+
+        using Measurement<Dims, State, Dims>::stamp;
+        using Measurement<Dims, State, Dims>::predicted;
+        using Measurement<Dims, State, Dims>::measured;
+
+        using Transform = typename Measurement<Dims, State, Dims>::PredictionTransform;
+
+        StateMeasurement() : Measurement<Dims, State, Dims>()
+        {
+            bias.setZero();
+
+            // state measurement => input equal to measured
+            measured.dy = Mat<Dims, Dims>::Identity(); 
+            measured.y.setZero();
+        };
+
+        void transform()
+        {
+            measured.y = mean - bias;
+        }
+
+        MeasurementVec bias;
+
+    };
 
 };
 

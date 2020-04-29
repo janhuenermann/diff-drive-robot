@@ -1,16 +1,28 @@
 #ifndef EKF_HPP
 #define EKF_HPP
 
+#include <drone_ekf/eigen/Addons.h>
+
 #include <drone_ekf/types.hpp>
 #include <drone_ekf/measurement.hpp>
 #include <drone_ekf/system.hpp>
 #include <drone_ekf/state.hpp>
 
 #include <ros/ros.h>
+#include <vector>
+#include <type_traits>
+#include <iostream>
+
+#include <Eigen/Dense>
 
 
 namespace drone_ekf
 {
+
+    using std::is_base_of;
+    using std::vector;
+    using std::cout;
+    using std::endl;
 
     /** N = state dims */
     /** M = input dims */
@@ -18,6 +30,8 @@ namespace drone_ekf
     template<typename System>
     class EKF
     {
+
+    public:
 
         static_assert(is_base_of_any<drone_ekf::System, System>{});
 
@@ -30,23 +44,132 @@ namespace drone_ekf
         using StateVec = typename State::StateVec;
         using StateCov = typename State::StateCov;
 
-        EKF() : state_(), system_(state_) 
+        static_assert(is_base_of<drone_ekf::FullState<17>, State>{});
+
+        EKF() : 
+            state_(), 
+            system_(state_) 
         {
+            ROS_INFO("BOOTING EKF WHAETEVER");
             reset();
         }
 
-        void reset();
+        void reset()
+        {
+            running_ = false;
+            last_step_time_ = ros::Time(0);
+            system_.reset();
+        }
+
+        /**
+         * Inits a measurement for use with this filter
+         * @param m Measurement
+         */
+        template<typename Measure>
+        void use(Measure &m)
+        {
+            m.attach(Measure::StateType::createRefFromFullState(state_));
+        }
 
         /**
          * Next step
          */
-        void step(const Input &u);
+        void step(const Input &u)
+        {
+            const ros::Time now = ros::Time::now();
+            typename System::Transform &pred = system_.prediction;
+
+            double dt = 0.0;
+
+            if (running_)
+            {
+                dt = (now - last_step_time_).toSec();
+                assert(dt > 0.0);
+            }
+
+            // runs f(x, u) = system_.transform.x, gives us F and G (derivatives) in system_.transform
+            system_.predict(u, dt);
+
+            // project cov
+            pred.projectCov(state_.cov, u.cov);
+
+            // sanity checks
+            assert(u.cov.isApproxSymmetric());
+            assert(pred.Q.isApproxSymmetric());
+
+            // update state by copying over data and calculating new cov
+            state_.mean.noalias() = pred.y;
+            state_.cov.noalias()  = pred.cov;
+
+            // sanity checks (important!)
+            assert(state_.cov.isApproxSymmetric());
+
+            running_ = true;
+            last_step_time_ = now;
+        }
 
         /**
          * Corrects the state of the filter based on measurements
          */
-        template<typename Measurement>
-        void correct(const Measurement &Z);
+        template<typename Measure>
+        void correct(Measure &m)
+        {
+            // static_assert(is_measurement_class<drone_ekf::Measurement, Measurement>{});
+            const typename Measure::StateRef::StateCov I = Measure::StateRef::StateCov::Identity();
+            
+            // intermediate repr z
+            typename Measure::MeasurementTransform &z = m.measured;
+            typename Measure::PredictionTransform &zhat = m.predicted;
+
+            typename Measure::Correction &corr = m.correction;
+            typename Measure::StateRef *&st = m.state;
+
+            // transform state to predicted measurement
+            m.update();
+
+            if (!m.valid) return ;
+
+            // sanity check
+            assert(z.cov.isApproxSymmetric());
+            assert(zhat.cov.isApproxSymmetric());
+
+            corr.y.noalias() = z.y - zhat.y;
+            corr.S.noalias() = zhat.cov + z.cov;
+            corr.K.noalias() = st->cov * zhat.dy.transpose() * corr.S.inverse();
+
+
+            #ifndef NDEBUG
+            if (abs(corr.S.determinant()) < 1e-5)
+            {
+                ROS_WARN("det S very small.");
+            }
+            #endif
+
+
+            if (corr.S.diagonal().array().abs().maxCoeff() < 1e-9)
+            {
+                ROS_DEBUG("S matrix is looking not good. Bailing out. ");
+                ROS_DEBUG_STREAM("Correction type : " << typeid(Measure).name());
+
+                ROS_DEBUG_STREAM("y = \n " << corr.y);
+                ROS_DEBUG_STREAM("z cov = \n " << z.cov);
+                ROS_DEBUG_STREAM("z hat cov = \n " << zhat.cov);
+                ROS_DEBUG_STREAM("S = \n " << corr.S);
+                ROS_DEBUG_STREAM("K = \n " << corr.K);
+
+                return ;
+            }
+
+            // apply correction
+            st->mean = st->mean + corr.K * corr.y;
+            st->cov  = (I - corr.K * zhat.dy) * st->cov;
+
+            m.applied();
+
+            // sanity checks (important!)
+            assert(st->cov.isApproxSymmetric());
+        }
+
 
         State state_;
         System system_;
@@ -55,9 +178,6 @@ namespace drone_ekf
 
         ros::Time last_step_time_;
         bool running_;
-
-        StateVec __mean; // tmp
-        StateCov __cov; // tmp
 
     };
 
