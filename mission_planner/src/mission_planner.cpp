@@ -36,9 +36,13 @@ msg     message with robot coordinates
     publish_goal();
 }
 
-void MissionPlanner::publish_goal(){
+void MissionPlanner::publish_goal()
+{
 /*Publishes the current goal point
 */
     goal_pub.publish(goals[current_goal]);
-    status_pub.publish(mission_done);
+
+    std_msgs::Bool msg;
+    msg.data = mission_done;
+    status_pub.publish(msg);
 }
