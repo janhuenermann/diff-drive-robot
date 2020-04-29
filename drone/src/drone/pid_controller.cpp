@@ -1,43 +1,16 @@
 #include <drone/pid_controller.hpp>
 
 
-void ErrorLine::set_pos(geometry_msgs::Point drone_pos){
-  pos = drone_pos;
-}
-
-void ErrorLine::calc_err(geometry_msgs::Vector3 &e_line, geometry_msgs::Vector3 &e_rob){
-  double tau = dir.x*pos.x+dir.y*pos.y+dir.z*pos.z-dir.x*start.x-dir.y*start.y-dir.z*start.z;
-  geometry_msgs::Point closest_p;
-  closest_p.x = start.x + tau*dir.x;
-  closest_p.y = start.y + tau*dir.y;
-  closest_p.z = start.z + tau*dir.z;
-  e_line.x = closest_p.x-pos.x;
-  e_line.y = closest_p.y-pos.y;
-  e_line.z = closest_p.z-pos.z;
-  e_rob.x = end.x-closest_p.x;
-  e_rob.y = end.y-closest_p.y;
-  e_rob.z = end.z-closest_p.z;
-}
-
-void ErrorLine::gen_line(geometry_msgs::Point start_p,geometry_msgs::Point end_p){
-  start = start_p;
-  end = end_p;
-  dir.x = end_p.x-start_p.x;
-  dir.y = end_p.y-start_p.y;
-  dir.z = end_p.z-start_p.z;
-  end_tau = sqrt(pow(dir.x,2)+pow(dir.y,2)+pow(dir.z,2));
-  dir.x /= end_tau;
-  dir.y /= end_tau;
-  dir.z /= end_tau;
-}
-
 PIDController::PIDController():
-  prev_update_time(ros::Time(0)){
+  prev_update_time(ros::Time(0))
+{
   ros::NodeHandle nh;
   pub_err = nh.advertise<geometry_msgs::Point>("PID_tune_e", 10);
   pub_int = nh.advertise<geometry_msgs::Point>("PID_tune_i", 10);
 }
 
+
+// Functions to set parameters:
 void PIDController::setParameters_freq(double freq){
   dt = 1.0 / freq;
 }
@@ -53,12 +26,18 @@ void PIDController::set_true_angles(geometry_msgs::Quaternion q){
     drone_q = q;
 }
 
+void PIDController::set_true_vel(geometry_msgs::Vector3 vel){
+  drone_v_xy.x = vel.x;
+  drone_v_xy.y = vel.y;
+}
+
 void PIDController::set_target_pos(geometry_msgs::Point target){
     goal_xy.x = target.x;
     goal_xy.y = target.y;
     goal_z = target.z;
 }
 
+// Publishing functions
 void PIDController::publish_e(double ex, double ey, double ez){
   geometry_msgs::Point e;
   e.x = ex;
@@ -76,7 +55,9 @@ void PIDController::publish_int(double ix, double iy, double iz){
 }
 
 void PIDController::set_phase(int phase){
+  // Select the appropriate PID coefficients according to phase
   if(phase!=curr_state){
+    // Reset integrator on phase change
     integrated_x = 0;
     integrated_y = 0;
   }
@@ -95,13 +76,23 @@ void PIDController::set_phase(int phase){
   case 3:
     p_xy = kp_xy; i_xy = ki_xy; d_xy = kd_xy;
     p_z = kp_z; i_z = ki_z; d_z = kd_z;
+    break;
+  case 5:
+    p_xy = lap_xy; i_xy = lai_xy; d_xy = lad_xy;
+    p_z = lap_z; i_z = lai_z; d_z = lad_z;
+  break;
+  case 6:
+    p_xy = 0; i_xy = 0; d_xy =0;
+    p_z = 0; i_z = 0; d_z = 0;
   break;
   }
 }
 
 void PIDController::update(double &vel_x, double &vel_y,double &vel_z){
+    // calculate velocity commands from error
     double time_delta = (ros::Time::now() - prev_update_time).toSec();
 
+    // Calculate error
     double e_x = goal_xy.x - drone_xy.x;
     double e_y = goal_xy.y - drone_xy.y;
     double e_z = goal_z - drone_z;
@@ -111,6 +102,10 @@ void PIDController::update(double &vel_x, double &vel_y,double &vel_z){
     double vel_x_w = p_xy*e_x + i_xy*integrated_x + d_xy*(e_x-e_prev_xy.x)/time_delta;
     double vel_y_w = p_xy*e_y + i_xy*integrated_y + d_xy*(e_y-e_prev_xy.y)/time_delta;
     double vel_z_w = p_z*e_z + i_z*integrated_z + d_z*(e_z-e_prev_z)/time_delta;
+
+    // Limiting to fulfill constraints
+    vel_x_w = std::max(std::min(drone_v_xy.x+a_max*time_delta,vel_x_w),drone_v_xy.x-a_max*time_delta);
+    vel_y_w = std::max(std::min(drone_v_xy.y+a_max*time_delta,vel_y_w),drone_v_xy.y-a_max*time_delta);
 
     double abs_vel_xy = sqrt(pow(vel_x_w,2)+pow(vel_y_w,2));
     if(abs_vel_xy>maxv_xy){
@@ -129,6 +124,7 @@ void PIDController::update(double &vel_x, double &vel_y,double &vel_z){
     vel_y = pd.getY();
     vel_z = pd.getZ();
 
+    // Only use integrator close to steady state
     if(abs(e_x)>threshold_ss){
       integrated_x = 0;
     }else{

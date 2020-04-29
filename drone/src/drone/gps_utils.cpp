@@ -10,11 +10,19 @@ GPSUtils::GPSUtils(geometry_msgs::Point initial_pos,double initial_heading){
   sub_gps_vel = nh.subscribe("/drone/fix_velocity",1,&GPSUtils::velCallback,this);
 }
 
+//getter functions
 geometry_msgs::Vector3 GPSUtils::get_var_pos(){
   return var_pos;
 }
 geometry_msgs::Vector3 GPSUtils::get_var_vel(){
   return var_vel;
+}
+geometry_msgs::Point GPSUtils::get_pos(){
+  return current_pos;
+}
+
+geometry_msgs::Vector3 GPSUtils::get_vel(){
+  return current_vel;
 }
 
 void GPSUtils::posCallback(const sensor_msgs::NavSatFix::ConstPtr& msg){
@@ -79,13 +87,14 @@ geometry_msgs::Point GPSUtils::convert_measurement(sensor_msgs::NavSatFix msg){
   double longitude = msg.longitude*M_PI/180.0;
   double latitude = msg.latitude*M_PI/180.0;
   double altitude = msg.altitude;
+  // first convert to ecef
   Eigen::Vector3d curr_ecef = gps2ecef(msg);
   Eigen::Vector3d ned;
   Eigen::Matrix3d Ren;
   Ren << -sin(latitude)*cos(longitude), -sin(longitude), -cos(latitude)*cos(longitude),
   -sin(latitude)*sin(longitude), cos(longitude), -cos(latitude)*sin(longitude),
   cos(latitude),0 , -sin(latitude);
-
+  // transform to ned frame
   ned = Ren.transpose()*(curr_ecef-initial_ecef);
 
   Eigen::Matrix3d Rmn;
@@ -94,7 +103,7 @@ geometry_msgs::Point GPSUtils::convert_measurement(sensor_msgs::NavSatFix msg){
     0,0,-1;
 
   Eigen::Vector3d map;
-
+  // convert to map coordinate system
   map = Rmn*(ned-initial_map);
   geometry_msgs::Point return_point;
   return_point.x = map(0);
@@ -104,15 +113,8 @@ geometry_msgs::Point GPSUtils::convert_measurement(sensor_msgs::NavSatFix msg){
 }
 
 bool GPSUtils::initialized(){
+  // check if the gps is initialized
   return init_counter_pos > NR_INIT_MEASURMENTS && init_counter_vel > NR_INIT_MEASURMENTS;
-}
-
-geometry_msgs::Point GPSUtils::get_pos(){
-  return current_pos;
-}
-
-geometry_msgs::Vector3 GPSUtils::get_vel(){
-  return current_vel;
 }
 
 Eigen::Vector3d GPSUtils::gps2ecef(sensor_msgs::NavSatFix msg){

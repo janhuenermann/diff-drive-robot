@@ -26,8 +26,7 @@ public:
         nh_(), frame_(),
         received_pose_(false), received_map_(false), received_path_(false), received_nav_goal_(false),
         received_pursuit_point_(false), received_drone_pos_(false), received_drone_goal_(false),
-        received_pursuit_point_(false), received_drone_pos_(false), received_intersection_pos_(false),
-        trajectory_(nullptr)
+        received_intersection_pos_(false), trajectory_(nullptr)
     {
         const double freq = 20.0;
 
@@ -67,13 +66,15 @@ public:
         resizeWindow(WINDOW_NAME, (int)out_w, (int)out_h);
     }
 
-    void dronePoseCallback(const nav_msgs::Odometry::ConstPtr& msg){
+    void dronePoseCallback(const nav_msgs::Odometry::ConstPtr& msg)
+    {
         drone_pos_.x = msg->pose.pose.position.x;
         drone_pos_.y = msg->pose.pose.position.y;
         received_drone_pos_ = true;
     }
 
-    void droneGoalCallback(const geometry_msgs::Pose2D::ConstPtr& msg){
+    void droneGoalCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
+    {
         drone_goal_ = *msg;
         received_drone_goal_ = true;
     }
@@ -245,17 +246,19 @@ public:
             drawCircle(toCVPoint(nav_goal_), 7, 0, 255, 0);
         }
 
-        if (received_drone_pos_){
-          drawCircle(toCVPoint(drone_pos_), 7, 255, 211, 0);
+        if (received_drone_pos_)
+        {
+            drawCircle(toCVPoint(drone_pos_), 7, 255, 211, 0);
         }
 
-<<<<<<< HEAD
-        if (received_drone_goal_){
-          drawCircle(toCVPoint(drone_goal_), 7, 98, 252, 3);
-=======
-        if (received_intersection_pos_){
-          drawCircle(toCVPoint(intersection_pos_), 7, 98, 252, 3);
->>>>>>> dfeb6cd... started with intersection calculation
+        if (received_drone_goal_)
+        {
+            drawCircle(toCVPoint(drone_goal_), 7, 98, 252, 3);
+        }
+
+        if (received_intersection_pos_)
+        {
+            drawCircle(toCVPoint(intersection_pos_), 7, 98, 252, 3);
         }
     }
 
@@ -366,7 +369,6 @@ public:
 
     inline void drawCircle(cv::Point p, int radius, uint8_t r, uint8_t g, uint8_t b)
     {
-
         circle(frame_, p, radius, Scalar(r, g, b), FILLED);
     }
 

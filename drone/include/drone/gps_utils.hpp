@@ -9,13 +9,16 @@
 class GPSUtils{
 public:
   GPSUtils(geometry_msgs::Point initial_pos,double initial_heading);
+
   geometry_msgs::Point convert_measurement(sensor_msgs::NavSatFix msg);
   void posCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
   void velCallback(const geometry_msgs::Vector3Stamped::ConstPtr& msg);
+
   geometry_msgs::Point get_pos();
   geometry_msgs::Vector3 get_vel();
   geometry_msgs::Vector3 get_var_pos();
   geometry_msgs::Vector3 get_var_vel();
+
   bool initialized();
 private:
   Eigen::Vector3d gps2ecef(sensor_msgs::NavSatFix msg);

@@ -15,6 +15,7 @@ public:
 
     void set_true_pos(geometry_msgs::Point pos);
     void set_true_angles(geometry_msgs::Quaternion q);
+    void set_true_vel(geometry_msgs::Vector3 vel);
 
     void set_target_pos(geometry_msgs::Point target);
 
@@ -27,22 +28,26 @@ public:
 
 protected:
     // Flight to stationary target
-    const double kp_xy = 1.3, ki_xy = 0, kd_xy = 0.1;
-    const double kp_z = 10, ki_z = 0.7, kd_z = 2.5;
+    const double kp_xy = 0.8, ki_xy = 0, kd_xy = 0.06;
+    const double kp_z = 3, ki_z = 0.7, kd_z = 0;
     // Flight to TURTLE
-    const double tp_xy = 1.7, ti_xy = 0.1, td_xy = 0.3;
-    const double tp_z = 10, ti_z = 0.7, td_z = 2.5;
+    const double tp_xy = 1.5, ti_xy = 0.15, td_xy = 0.09;
+    const double tp_z = 3, ti_z = 0.7, td_z = 0;
     // Start and landing
     const double lp_xy = 1, li_xy = 0.7, ld_xy = 0;
-    const double lp_z = 8, li_z = 0, ld_z = 2;
+    const double lp_z = 5, li_z = 0, ld_z = 0.2;
+    // final landing
+    const double lap_xy = 1, lai_xy = 0.7, lad_xy = 0;
+    const double lap_z = 0.2, lai_z = 0.05, lad_z = 0;
 
     // max params
-    const double maxv_xy = 2;
-    const double maxv_z = 1;
-    const double minv_z = -0.5;
+    const double maxv_xy = 1.6;
+    const double maxv_z = 0.9;
+    const double minv_z = -0.4;
     const double threshold_ss = 0.5;
     const double windup_xy = 0.5;
     const double windup_z = 0.2;
+    const double a_max = 40;
 
     double dt;
     double p_xy, i_xy, d_xy;
@@ -53,6 +58,7 @@ protected:
     double goal_z;
     Point2 drone_xy;
     double drone_z;
+    Point2 drone_v_xy;
     geometry_msgs::Quaternion drone_q;
 
     double integrated_x=0;
