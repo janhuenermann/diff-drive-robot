@@ -26,7 +26,7 @@ public:
         motor_client = nh.serviceClient<hector_uav_msgs::EnableMotors>("enable_motors");
         srv.request.enable = true;
         motor_client.call(srv);
-        // frequency of PID controller
+        // frequency of PID controller
         pid.setParameters_freq(freq);
 
         // Initialize and subscribe topics

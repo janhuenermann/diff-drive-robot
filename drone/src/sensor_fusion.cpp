@@ -1,37 +1,102 @@
-#include <drone_ekf/model.hpp>
-#include <drone_ekf/math.hpp>
-#include <drone_ekf/types.hpp>
+#include <ekf/model.hpp>
+#include <ekf/math.hpp>
+#include <ekf/types.hpp>
 
 #include <ros/ros.h>
 
 #include <geometry_msgs/Vector3Stamped.h>
 #include <sensor_msgs/Imu.h>
+#include <sensor_msgs/Range.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <sensor_msgs/NavSatFix.h>
+#include <hector_uav_msgs/Altimeter.h>
 
-#include <Eigen/Dense>
+#include <drone/gps_utils.hpp>
+#include <drone/math.hpp>
 
 using namespace std;
-using namespace drone_ekf_model;
-using Vec3 = Eigen::Vector3d;
-using Mat33 = Eigen::Matrix<double, 3, 3>;
-using drone_ekf::I3;
+using namespace ekf_model;
 
-const double Frequency = 100.0;
-const drone_ekf::Input<0> NoInput = drone_ekf::Input<0>();
+using ekf::I3;
+using ekf::Input;
+
 
 struct SensorCalibration
 {
 
-    Vec<3> magneto_ = {};
-    int magneto_measurements_ = 0;
+    vector<Vec3> magneto_ = {};
+    vector<Vec3> ecef_ = {};
+    vector<Vec3> vel_ = {};
+    vector<Vec1> sonar_ = {};
+    vector<Vec1> altitude_ = {};
 
-    Vec<3> getMagnetoReference() 
+    // we can only use these messages once we have an initial ecef estimate
+    vector<sensor_msgs::NavSatFix> pos_msgs_ = {};
+
+    Stats<3> magneto_initial_;
+    Stats<3> ecef_initial_;
+    Stats<3> vel_initial_;
+    Stats<3> pos_initial_;
+    Stats<1> sonar_initial_;
+    Stats<1> altitude_initial_;
+
+    Vec3 magneto_ref_mu_;
+    Mat33 magneto_ref_cov_;
+
+    Vec3 world_offset_;
+
+    void finalize()
     {
-        assert(magneto_measurements_ > 2);
-        return magneto_ / (double)magneto_measurements_;
+        magneto_initial_ = getStats(magneto_);
+        ecef_initial_ = getStats(ecef_);
+        vel_initial_ = getStats(vel_);
+        sonar_initial_ = getStats(sonar_);
+        altitude_initial_ = getStats(altitude_);
+
+        // world origin is offset by initial
+        world_offset_.setZero();
+        world_offset_(2) = -sonar_initial_.mean(0);
+
+        vector<Vec3> pos = {};
+        for (const sensor_msgs::NavSatFix& fix : pos_msgs_)
+        {
+            pos.push_back(GPS::convertMeasurement(fix, ecef_initial_.mean, world_offset_));
+        }
+
+        pos_initial_ = getStats(pos);
+
+        magneto_ref_mu_(0) = magneto_initial_.mean.head(2).norm();
+        magneto_ref_mu_(1) = 0;
+        magneto_ref_mu_(2) = magneto_initial_.mean(2);
+
+        magneto_ref_cov_.setZero();
+        magneto_ref_cov_(0,0) = magneto_initial_.cov(0,0) + magneto_initial_.cov(1,1);
+        magneto_ref_cov_(2,2) = magneto_initial_.cov(2,2);
     }
 
-    bool isFine() { return magneto_measurements_ > 10; }
+    bool isDone() 
+    { 
+        return magneto_.size() >= 10 
+            && ecef_.size() >= 20 
+            && vel_.size() >= 5
+            && sonar_.size() >= 8
+            && altitude_.size() >= 8;
+    }
+
+    Vec3 getReferenceECEF() { assert(isDone()); return ecef_initial_.mean; }
+
+    Vec3 getMagnetoReference() { assert(isDone());  return magneto_ref_mu_; }
+    Mat33 getMagnetoCov() { assert(isDone()); return magneto_ref_cov_; }
+
+    Vec3 getPositionReference() { assert(isDone()); return pos_initial_.mean; }
+    Mat33 getPositionCov() { assert(isDone()); return pos_initial_.cov; }
+
+    Vec3 getInitialVelocity() { assert(isDone()); return vel_initial_.mean; }
+    Mat33 getInitialVelocityCov() { assert(isDone()); return vel_initial_.cov; }
+
+    double getAltimeterReference() { assert(isDone()); return altitude_initial_.mean(0) - world_offset_.z(); }
+
+    Vec3 getWorldOffset() { return world_offset_; }
 
 };
 
@@ -42,153 +107,277 @@ public:
     SensorFusion() : 
         nh_(),
         ekf_(),
-        imu_counter_(0)
+        imu_counter_(0),
+        calibration_(new SensorCalibration())
     {
         ROS_INFO("Booting sensor fusion");
 
-        ekf_.use(gyro_);
-        ekf_.use(accel_);
+        ekf_.use(accel_gravity_);
         ekf_.use(magneto_);
+        ekf_.use(position_);
+        ekf_.use(velocity_);
+        ekf_.use(sonar_);
+        ekf_.use(altimeter_);
+        ekf_.use(bias_);
 
         ros::Duration(6.0).sleep(); // weired imu values at start
 
         sub_imu_ = nh_.subscribe("raw_imu", 1, &SensorFusion::imuCallback,this);
         sub_imu_bias_ = nh_.subscribe("raw_imu/bias", 1, &SensorFusion::imuBiasCallback,this);
         sub_magnetic_ = nh_.subscribe("magnetic", 1, &SensorFusion::magnetometerCallback, this);
+        sub_gps_pos_ = nh_.subscribe("fix", 1, &SensorFusion::positionCallback, this);
+        sub_gps_vel_ = nh_.subscribe("fix_velocity", 1, &SensorFusion::velocityCallback, this);
+        sub_sonar_ = nh_.subscribe("sonar_height", 1, &SensorFusion::sonarCallback, this);
+        sub_altimeter_ = nh_.subscribe("altimeter", 1, &SensorFusion::altimeterCallback, this);
 
         pub_marker_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
 
         calibrate();
 
-        tick_timer_ = nh_.createTimer(ros::Duration(1.0 / Frequency), &SensorFusion::tickCallback, this);
+        tick_timer_ = nh_.createTimer(ros::Duration(1.0 / 20.0), &SensorFusion::tickCallback, this);
+    }
+
+    ~SensorFusion()
+    {
+        delete calibration_;
     }
 
     void calibrate()
     {
-
-        SensorCalibration _calib;
-        calibration_ = &_calib;
-
-        ROS_INFO("Starting calibration.");
+        ROS_INFO("Calibrating...");
 
         do
         {
-
             ros::spinOnce();
 
-            if (calibration_->isFine())
+            if (calibration_->isDone())
             {
                 applyCalibration();
-                calibration_ = nullptr;
             }
-
-
         }
-        while (calibration_ != nullptr);
+        while (!isCalibrated());
     }
 
     void applyCalibration()
     {
-        ROS_DEBUG_STREAM("Magneto calibration : \n" << calibration_->getMagnetoReference());
-        magneto_.setReference(calibration_->getMagnetoReference());
+        calibration_->finalize();  // Calculate statistics
 
-        calibrated_ = true;
+        // Set magnetometer reference
+        magneto_.setReference(calibration_->getMagnetoReference(), calibration_->getMagnetoCov());
+
+        // Update initial ekf state
+        XPos x_pos = ekf_.state_.getSubState<XPos>();
+        x_pos.mean = calibration_->getPositionReference();
+        x_pos.cov = calibration_->getPositionCov();
+
+        XVel x_vel = ekf_.state_.getSubState<XVel>();
+        x_vel.mean = Vec3(0.0,0.0,0.0);
+        x_vel.cov = calibration_->getInitialVelocityCov();
+
+        ROS_INFO_STREAM("Initial position: \n " << calibration_->pos_initial_.mean << "\n with cov: \n" << calibration_->pos_initial_.cov);
+        ROS_INFO_STREAM("Initial velocity: \n " << calibration_->vel_initial_.mean << "\n with cov: \n" << calibration_->vel_initial_.cov);
 
         ROS_INFO("Calibration done.");
+
+        calibrated_ = true;
     }
 
     void tickCallback(const ros::TimerEvent& evt)
     {
-        ekf_.step(NoInput);
-        // ekf_.system_.gyro.cov = 0.10 * I3;
-
-        publishMarker(ekf_.orientation());
+        publishMarker(ekf_.position(), ekf_.orientation());
     }
 
     void imuCallback(const sensor_msgs::Imu& msg)
     {
-        if (!calibrated_)
+        if (!isCalibrated())
         {
             return ;
         }
 
+        // Get sensor data
         Vec3 linear_acceleration = Vec3(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
         Vec3 angular_velocity = Vec3(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
         
-        Mat33 linear_acceleration_cov = I3 * 12.00;
-        Mat33 angular_velocity_cov = I3 * 0.02;
+        Mat33 linear_acceleration_cov = I3 * 0.125;
+        Mat33 angular_velocity_cov = I3 * 0.01;
 
-        gyro_.set(
-            angular_velocity,
-            angular_velocity_cov,
-            msg.header.stamp
-        );
+        // Update input
+        input.mean.setZero();
+        input.cov.setZero();
 
-        accel_.set(
-            linear_acceleration,
-            linear_acceleration_cov,
-            msg.header.stamp
-        );
+        input.mean.segment<3>(0) = linear_acceleration;
+        input.cov.block<3,3>(0,0) = linear_acceleration_cov;
 
-        ekf_.correct(gyro_);
+        input.mean.segment<3>(3) = angular_velocity;
+        input.cov.block<3,3>(3,3) = angular_velocity_cov;
 
-        // only correct every 5th step
-        if (imu_counter_ % 5 == 0)
+        // Correct gravity every 6th step
+        if (imu_counter_ % 6 == 0)
         {
+            accel_gravity_.set(
+                linear_acceleration,
+                2.0 * linear_acceleration_cov,
+                msg.header.stamp);
 
-            ekf_.correct(accel_);
-            
+            ekf_.correct(accel_gravity_);
         }
+        
+        ekf_.step(input);
 
         imu_counter_ += 1;
     }
 
     void imuBiasCallback(const sensor_msgs::Imu& msg)
     {
-        accel_.bias = Vec3(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
-        gyro_.bias = Vec3(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
+        accel_bias_ = Vec3(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
+        gyro_bias_ = Vec3(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
+
+        accel_gravity_.bias = accel_bias_;
+
+        bias_.mean.segment<3>(0) = accel_bias_;
+        bias_.cov.block<3,3>(0,0) = 0.10 * I3;
+
+        bias_.mean.segment<3>(3) = gyro_bias_;
+        bias_.cov.block<3,3>(3,3) = 0.01 * I3;
+
+        ekf_.correct(bias_);
     }
 
     void magnetometerCallback(const geometry_msgs::Vector3Stamped& msg)
     {
         Vec3 field(msg.vector.x, msg.vector.y, msg.vector.z);
-        Mat33 field_cov = 1.00 * I3;
+        Mat33 field_cov = 0.05 * I3;
 
-        if (!calibrated_)
+        if (!isCalibrated())
         {
-            calibration_->magneto_ += field;
-            calibration_->magneto_measurements_ += 1;
+            calibration_->magneto_.push_back(field);
+            return ;
         }
 
         magneto_.set(field, field_cov, msg.header.stamp);
         ekf_.correct(magneto_);
     }
 
+    void positionCallback(const sensor_msgs::NavSatFix& msg)
+    {
+        if (!isCalibrated())
+        {
+            Vec3 ecef = GPS::GPS2ECEF(msg);
+
+            calibration_->ecef_.push_back(ecef);
+            calibration_->pos_msgs_.push_back(msg);
+
+            return ;
+        }
+
+        Vec3 xyz = GPS::convertMeasurement(msg, 
+            calibration_->getReferenceECEF(), 
+            calibration_->getWorldOffset());
+
+        Mat33 xyz_cov = 0.04 * I3;
+
+        position_.set(xyz, xyz_cov, msg.header.stamp);
+        ekf_.correct(position_);
+    }
+
+    void velocityCallback(const geometry_msgs::Vector3Stamped& msg)
+    {
+        Vec3 vel(msg.vector.x, msg.vector.y, msg.vector.z);
+        Mat33 vel_cov = 0.02 * I3;
+
+        if (!isCalibrated())
+        {
+            calibration_->vel_.push_back(vel);
+            return ;
+        }
+
+        velocity_.set(vel, vel_cov, msg.header.stamp);
+        ekf_.correct(velocity_);
+    }
+
+    void sonarCallback(const sensor_msgs::Range &msg)
+    {
+        const double range_cov = 0.0001;
+        double range = (double)msg.range;
+
+        if (!isCalibrated())
+        {
+            calibration_->sonar_.push_back(Vec1(range));
+            return ;
+        }
+
+        // If out of range, do not use sonar
+        if (range >= 2.95)
+        {
+            return ;
+        }
+
+        sonar_.set(Vec1(range), Vec1(range_cov), msg.header.stamp);
+        ekf_.correct(sonar_);
+    }
+
+    void altimeterCallback(const hector_uav_msgs::Altimeter &msg)
+    {
+        const double altitude_cov = 0.15;
+        double altitude = (double)msg.altitude;
+
+        if (!isCalibrated())
+        {
+            calibration_->altitude_.push_back(Vec1(altitude));
+            return ;
+        }
+
+        altitude -= calibration_->getAltimeterReference();
+        altimeter_.set(Vec1(altitude), Vec1(altitude_cov), msg.header.stamp);
+        ekf_.correct(altimeter_);
+    }
+
+    bool isCalibrated() { return calibrated_; }
+
 protected:
 
-    GyroMeasurement gyro_;
-    AccelerometerMeasurement accel_;
-    MagnetometerMeasurement magneto_;
-
+    /** EKF */
     EKF ekf_;
+    Input<6> input;
 
+    /** EKF correctors */
+    AccelerometerGravityMeasurement accel_gravity_;
+    MagnetometerMeasurement magneto_;
+    PositionMeasurement position_;
+    VelocityMeasurement velocity_;
+    SonarMeasurement sonar_;
+    AltimeterMeasurement altimeter_;
+    BiasMeasurement bias_;
+
+    /** Subscribers */
     ros::Subscriber sub_imu_;
     ros::Subscriber sub_imu_bias_;
     ros::Subscriber sub_magnetic_;
+    ros::Subscriber sub_gps_pos_;
+    ros::Subscriber sub_gps_vel_;
+    ros::Subscriber sub_sonar_;
+    ros::Subscriber sub_altimeter_;
 
+    /** Debug publishers */
     ros::Publisher pub_marker_;
 
+    /** Misc */
     ros::NodeHandle nh_;
     ros::Timer tick_timer_;
-
     int imu_counter_;
+    int bias_counter_ = 0;
 
+    /** Calibration */
     SensorCalibration *calibration_;
     bool calibrated_ = false;
 
+    /** Sensor bias */
+    Vec3 accel_bias_;
+    Vec3 gyro_bias_;
+
 private:
 
-    void publishMarker(Quaternion estimate)
+    void publishMarker(Vec<3> pos, Quaternion estimate)
     {
         visualization_msgs::MarkerArray markers;
         visualization_msgs::Marker marker;
@@ -200,9 +389,9 @@ private:
         marker.ns = "base";
         marker.action = visualization_msgs::Marker::ADD;
 
-        marker.pose.position.x = 0;
-        marker.pose.position.y = 0;
-        marker.pose.position.z = 0;
+        marker.pose.position.x = pos.x();
+        marker.pose.position.y = pos.y();
+        marker.pose.position.z = pos.z();
 
         marker.color.a = 0.9f;
 

@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
     nav_msgs
     math
     hector_uav_msgs
-    drone_ekf
+    ekf
 )
 
 
@@ -131,8 +131,6 @@ include_directories(
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
-    # src/drone/ekf.cpp
-    # src/drone/geometry.cpp
     src/drone/pid_controller.cpp
     src/drone/gps_utils.cpp
 )
@@ -147,7 +145,6 @@ add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(motion_controller src/motion_controller.cpp)
 add_executable(sensor_fusion src/sensor_fusion.cpp)
-add_executable(gps_test src/gps_coor.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -159,14 +156,9 @@ add_executable(gps_test src/gps_coor.cpp)
 ## same as for the library above
 add_dependencies(motion_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(sensor_fusion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(gps_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(motion_controller
-   ${catkin_LIBRARIES}
-   ${PROJECT_NAME}
-)
-target_link_libraries(gps_test
    ${catkin_LIBRARIES}
    ${PROJECT_NAME}
 )
@@ -174,7 +166,7 @@ target_link_libraries(gps_test
 target_link_libraries(sensor_fusion
    ${catkin_LIBRARIES}
    ${PROJECT_NAME}
-   drone_ekf
+   ekf
 )
 
 #############
