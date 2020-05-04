@@ -9,7 +9,7 @@
 #include <Eigen/Dense>
 
 
-namespace drone_ekf
+namespace ekf
 {
 
     /**
@@ -27,10 +27,10 @@ namespace drone_ekf
      * 
      */
 
-    template<unsigned int N, unsigned int M>
+    template<int N, int M>
     using Mat = Eigen::Matrix<double, N, M>;
     
-    template<unsigned int N>
+    template<int N>
     using Vec = Mat<N, 1>;
 
     using Quaternion = Eigen::Quaternion<double>;
@@ -92,11 +92,13 @@ namespace drone_ekf
     {
 
         using InCov = Mat<InDims, InDims>;
+        using NoiseCov = Mat<OutDims, OutDims>;
         using Jacobi = Mat<OutDims, InDims>;
         
         Vec<OutDims> y;
         Jacobi dy;
 
+        NoiseCov Q;
         Mat<OutDims, OutDims> cov;
 
         Transform() { reset(); }
@@ -105,6 +107,7 @@ namespace drone_ekf
         {
             y.setZero();
             dy.setZero();
+            Q.setZero();
         }
 
         /**
@@ -121,7 +124,7 @@ namespace drone_ekf
 
         virtual void projectCov(const InCov &xcov)
         {
-            cov = dy * xcov * dy.transpose();
+            cov = dy * xcov * dy.transpose() + Q;
         }
 
         template <unsigned int I, unsigned int N, unsigned int J, unsigned M>
@@ -202,6 +205,11 @@ namespace drone_ekf
             return StateTransform<State,State::Dims>::template jacobi<VarStateType::SegmentIndex, VarStateType::Dims, WrtStateType>();
         }
 
+        template <typename VarStateType = State, unsigned int Index, unsigned int Count>
+        inline Ref< Mat<VarStateType::Dims, Count> > inputJacobi()
+        {
+            return dyi.template block<VarStateType::Dims, Count>(VarStateType::SegmentIndex, Index);
+        }
 
         template <typename VarStateType = State, typename WrtStateType = VarStateType>
         inline Ref< Mat<VarStateType::Dims, WrtStateType::Dims> > noise()

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>drone_ekf</name>
+  <name>ekf</name>
   <version>0.0.1</version>
   <description>Implementation of an extended Kalman Filter for sensor fusion</description>
   <maintainer email="jan@huenermann.de">Jan Hünermann</maintainer>

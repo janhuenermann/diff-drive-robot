@@ -6,13 +6,13 @@
  * EKF's state.
  */
 
-#include <drone_ekf/eigen/Addons.h>
-#include <drone_ekf/types.hpp>
+#include <ekf/eigen/Addons.h>
+#include <ekf/types.hpp>
 
 #include <Eigen/Dense>
 
 
-namespace drone_ekf
+namespace ekf
 {
 
     /** Base state. Can either be a sub-, or full-state. */

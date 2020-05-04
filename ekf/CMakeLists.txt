@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(drone_ekf)
+project(ekf)
 
 ## Compile as C++17, supported in ROS Kinetic and newer
 set(CMAKE_CXX_STANDARD 17)
@@ -32,8 +32,8 @@ include_directories(
 
 ## C++ library
 add_library(${PROJECT_NAME}
-    src/drone_ekf/model.cpp
-    src/drone_ekf/math.cpp
+    src/ekf/model.cpp
+    src/ekf/math.cpp
 )
 
 add_dependencies(${PROJECT_NAME} 

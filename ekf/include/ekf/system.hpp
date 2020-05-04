@@ -1,11 +1,11 @@
 #ifndef EKF_SYSTEM_HPP
 #define EKF_SYSTEM_HPP
 
-#include <drone_ekf/types.hpp>
-#include <drone_ekf/state.hpp>
+#include <ekf/types.hpp>
+#include <ekf/state.hpp>
 
 
-namespace drone_ekf
+namespace ekf
 {
 
     /** N := StateDims */
@@ -19,8 +19,8 @@ namespace drone_ekf
         static const int StateDims = N;
         static const int InputDims = M;
 
-        typedef typename drone_ekf::FullState<N> State;
-        typedef typename drone_ekf::Input<M> Input;
+        typedef typename ekf::FullState<N> State;
+        typedef typename ekf::Input<M> Input;
 
         typedef SystemTransform<State, M> Transform;
 

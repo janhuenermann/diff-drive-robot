@@ -1,12 +1,12 @@
 #ifndef EKF_HPP
 #define EKF_HPP
 
-#include <drone_ekf/eigen/Addons.h>
+#include <ekf/eigen/Addons.h>
 
-#include <drone_ekf/types.hpp>
-#include <drone_ekf/measurement.hpp>
-#include <drone_ekf/system.hpp>
-#include <drone_ekf/state.hpp>
+#include <ekf/types.hpp>
+#include <ekf/measurement.hpp>
+#include <ekf/system.hpp>
+#include <ekf/state.hpp>
 
 #include <ros/ros.h>
 #include <vector>
@@ -16,7 +16,7 @@
 #include <Eigen/Dense>
 
 
-namespace drone_ekf
+namespace ekf
 {
 
     using std::is_base_of;
@@ -33,7 +33,7 @@ namespace drone_ekf
 
     public:
 
-        static_assert(is_base_of_any<drone_ekf::System, System>{});
+        static_assert(is_base_of_any<ekf::System, System>{});
 
         static const unsigned int StateDims = System::StateDims;
         static const unsigned int InputDims = System::InputDims;
@@ -44,7 +44,7 @@ namespace drone_ekf
         using StateVec = typename State::StateVec;
         using StateCov = typename State::StateCov;
 
-        static_assert(is_base_of<drone_ekf::FullState<17>, State>{});
+        static_assert(is_base_of<ekf::FullState<16>, State>{});
 
         EKF() : 
             state_(), 
@@ -106,6 +106,9 @@ namespace drone_ekf
 
             running_ = true;
             last_step_time_ = now;
+
+            // ROS_INFO_STREAM("state mean --- \n" << state_.mean);
+            // ROS_INFO_STREAM("state cov ---- \n" << state_.cov);
         }
 
         /**
@@ -114,7 +117,7 @@ namespace drone_ekf
         template<typename Measure>
         void correct(Measure &m)
         {
-            // static_assert(is_measurement_class<drone_ekf::Measurement, Measurement>{});
+            // static_assert(is_measurement_class<ekf::Measurement, Measurement>{});
             const typename Measure::StateRef::StateCov I = Measure::StateRef::StateCov::Identity();
             
             // intermediate repr z
@@ -137,14 +140,12 @@ namespace drone_ekf
             corr.S.noalias() = zhat.cov + z.cov;
             corr.K.noalias() = st->cov * zhat.dy.transpose() * corr.S.inverse();
 
-
             #ifndef NDEBUG
-            if (abs(corr.S.determinant()) < 1e-5)
+            if (abs(corr.S.determinant()) < 1e-8)
             {
                 ROS_WARN("det S very small.");
             }
             #endif
-
 
             if (corr.S.diagonal().array().abs().maxCoeff() < 1e-9)
             {

@@ -4,11 +4,11 @@
 #include <ros/ros.h>
 #include <iostream>
 
-#include <drone_ekf/eigen/Addons.h>
-#include <drone_ekf/state.hpp>
+#include <ekf/eigen/Addons.h>
+#include <ekf/state.hpp>
 
 
-namespace drone_ekf
+namespace ekf
 {
 
     using namespace std;
@@ -25,7 +25,7 @@ namespace drone_ekf
     struct Measurement : public GaussianVector<Dims>
     {
         static_assert(IntermediateReprDims > 0);
-        static_assert(is_base_of_any<drone_ekf::State, State>{});
+        static_assert(is_base_of_any<ekf::State, State>{});
 
         static const int IntermediateDims = IntermediateReprDims;
 
