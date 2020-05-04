@@ -13,6 +13,7 @@
 
     <group ns="drone">
         <node pkg="drone" type="sensor_fusion" name="sensor_fusion" output="screen" />
+        <node pkg="drone" type="motion_controller" name="motion_controller" output="screen" />
 
         <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
             <arg name="name" value="uav" />

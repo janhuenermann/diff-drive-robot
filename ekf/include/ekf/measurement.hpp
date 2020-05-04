@@ -53,7 +53,7 @@ namespace ekf
             state(nullptr)
         {}
 
-        virtual void update()
+        virtual void propagate()
         {
             assert(state != nullptr);
 
@@ -81,10 +81,11 @@ namespace ekf
         virtual void transform() {}
 
         /** Sets measurement input */
-        virtual void set(MeasurementVec mu, MeasurementCov var, ros::Time time)
+        virtual void update(MeasurementVec mu, MeasurementCov var, ros::Time time)
         {
             GaussianVector<Dims>::set(mu, var);
             stamp = time;
+            new_data = true;
         }
 
         virtual void attach(StateRef *st)
@@ -113,6 +114,7 @@ namespace ekf
         Correction correction;
 
         bool valid = true;
+        bool new_data = false;
 
     };
 

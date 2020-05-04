@@ -74,17 +74,26 @@ namespace ekf
         /**
          * Next step
          */
-        void step(const Input &u)
+        bool step(const Input &u)
         {
             const ros::Time now = ros::Time::now();
             typename System::Transform &pred = system_.prediction;
 
             double dt = 0.0;
 
-            if (running_)
+            if (!running_)
             {
-                dt = (now - last_step_time_).toSec();
-                assert(dt > 0.0);
+                running_ = true;
+                last_step_time_ = now;
+                
+                return false;
+            }
+
+            dt = (now - last_step_time_).toSec();
+
+            if (dt <= 0.0)
+            {
+                return false;
             }
 
             // runs f(x, u) = system_.transform.x, gives us F and G (derivatives) in system_.transform
@@ -104,9 +113,10 @@ namespace ekf
             // sanity checks (important!)
             assert(state_.cov.isApproxSymmetric());
 
-            running_ = true;
             last_step_time_ = now;
 
+            return true;
+            
             // ROS_INFO_STREAM("state mean --- \n" << state_.mean);
             // ROS_INFO_STREAM("state cov ---- \n" << state_.cov);
         }
@@ -128,7 +138,7 @@ namespace ekf
             typename Measure::StateRef *&st = m.state;
 
             // transform state to predicted measurement
-            m.update();
+            m.propagate();
 
             if (!m.valid) return ;
 
@@ -140,10 +150,12 @@ namespace ekf
             corr.S.noalias() = zhat.cov + z.cov;
             corr.K.noalias() = st->cov * zhat.dy.transpose() * corr.S.inverse();
 
+            m.new_data = false;
+
             #ifndef NDEBUG
             if (abs(corr.S.determinant()) < 1e-8)
             {
-                ROS_WARN("det S very small.");
+                ROS_WARN_STREAM("det S very small. [" << typeid(Measure).name() << "]");
             }
             #endif
 

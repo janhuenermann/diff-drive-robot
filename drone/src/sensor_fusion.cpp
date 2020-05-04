@@ -5,6 +5,8 @@
 #include <ros/ros.h>
 
 #include <geometry_msgs/Vector3Stamped.h>
+#include <geometry_msgs/PoseStamped.h>
+
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Range.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -29,6 +31,8 @@ struct SensorCalibration
     vector<Vec3> vel_ = {};
     vector<Vec1> sonar_ = {};
     vector<Vec1> altitude_ = {};
+    vector<Vec<6>> bias_ = {};
+    vector<Vec3> start_pose_ = {};
 
     // we can only use these messages once we have an initial ecef estimate
     vector<sensor_msgs::NavSatFix> pos_msgs_ = {};
@@ -39,6 +43,8 @@ struct SensorCalibration
     Stats<3> pos_initial_;
     Stats<1> sonar_initial_;
     Stats<1> altitude_initial_;
+    Stats<6> bias_initial_;
+    Stats<3> pose_initial_;
 
     Vec3 magneto_ref_mu_;
     Mat33 magneto_ref_cov_;
@@ -52,10 +58,22 @@ struct SensorCalibration
         vel_initial_ = getStats(vel_);
         sonar_initial_ = getStats(sonar_);
         altitude_initial_ = getStats(altitude_);
+        pose_initial_ = getStats(start_pose_);
+
+        if (bias_.size() > 0)
+        {
+            bias_initial_ = getStats(bias_);
+        }
+        else
+        {
+            bias_initial_.mean.setZero();
+            bias_initial_.cov = Mat<6,6>::Identity() * 0.20;
+        }
 
         // world origin is offset by initial
-        world_offset_.setZero();
-        world_offset_(2) = -sonar_initial_.mean(0);
+        world_offset_.x() = pose_initial_.mean.x();
+        world_offset_.y() = pose_initial_.mean.y();
+        world_offset_.z() = -sonar_initial_.mean(0);
 
         vector<Vec3> pos = {};
         for (const sensor_msgs::NavSatFix& fix : pos_msgs_)
@@ -80,7 +98,9 @@ struct SensorCalibration
             && ecef_.size() >= 20 
             && vel_.size() >= 5
             && sonar_.size() >= 8
-            && altitude_.size() >= 8;
+            && altitude_.size() >= 8
+            && bias_.size() >= 0
+            && start_pose_.size() >= 4;
     }
 
     Vec3 getReferenceECEF() { assert(isDone()); return ecef_initial_.mean; }
@@ -97,6 +117,9 @@ struct SensorCalibration
     double getAltimeterReference() { assert(isDone()); return altitude_initial_.mean(0) - world_offset_.z(); }
 
     Vec3 getWorldOffset() { return world_offset_; }
+
+    Vec<6> getBiasInitial() { return bias_initial_.mean; }
+    Mat<6,6> getBiasInitialCov() { return bias_initial_.cov; }
 
 };
 
@@ -118,9 +141,10 @@ public:
         ekf_.use(velocity_);
         ekf_.use(sonar_);
         ekf_.use(altimeter_);
+        ekf_.use(orientation_);
         ekf_.use(bias_);
 
-        ros::Duration(6.0).sleep(); // weired imu values at start
+        ros::Duration(4.0).sleep(); // weired imu values at start
 
         sub_imu_ = nh_.subscribe("raw_imu", 1, &SensorFusion::imuCallback,this);
         sub_imu_bias_ = nh_.subscribe("raw_imu/bias", 1, &SensorFusion::imuBiasCallback,this);
@@ -129,12 +153,12 @@ public:
         sub_gps_vel_ = nh_.subscribe("fix_velocity", 1, &SensorFusion::velocityCallback, this);
         sub_sonar_ = nh_.subscribe("sonar_height", 1, &SensorFusion::sonarCallback, this);
         sub_altimeter_ = nh_.subscribe("altimeter", 1, &SensorFusion::altimeterCallback, this);
+        sub_initial_pose_ = nh_.subscribe("ground_truth_to_tf/pose", 1, &SensorFusion::initialPoseCallback, this);
 
         pub_marker_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker", 1, true);
+        pub_state_ = nh_.advertise<nav_msgs::Odometry>("state", 1, true);
 
         calibrate();
-
-        tick_timer_ = nh_.createTimer(ros::Duration(1.0 / 20.0), &SensorFusion::tickCallback, this);
     }
 
     ~SensorFusion()
@@ -144,18 +168,63 @@ public:
 
     void calibrate()
     {
+        ros::Time start_time = ros::Time::now();
         ROS_INFO("Calibrating...");
 
         do
         {
+
             ros::spinOnce();
+            ros::Duration delta = ros::Time::now() - start_time;
 
             if (calibration_->isDone())
             {
                 applyCalibration();
             }
+
+            if (delta.toSec() > 5.0)
+            {
+                ROS_WARN("still calibrating... ");
+
+                if (calibration_->magneto_.size() < 10)
+                {
+                    ROS_WARN("have not received magneto reading");
+                }
+
+                if (calibration_->ecef_.size() < 20)
+                {
+                    ROS_WARN("have not received ecef reading");
+                }
+
+                if (calibration_->vel_.size() < 5)
+                {
+                    ROS_WARN("have not received velocity reading");
+                }
+
+                if (calibration_->sonar_.size() < 8)
+                {
+                    ROS_WARN("have not received sonar reading");
+                }
+
+                if (calibration_->altitude_.size() < 8)
+                {
+                    ROS_WARN("have not received altitude reading");
+                }
+
+                if (calibration_->bias_.size() < 1)
+                {
+                    ROS_WARN("have not received bias reading");
+                }
+
+                if (calibration_->start_pose_.size() < 4)
+                {
+                    ROS_WARN("have not received initial pose reading");
+                }
+
+                start_time = ros::Time::now();
+            } 
         }
-        while (!isCalibrated());
+        while (ros::ok() && !isCalibrated());
     }
 
     void applyCalibration()
@@ -174,6 +243,10 @@ public:
         x_vel.mean = Vec3(0.0,0.0,0.0);
         x_vel.cov = calibration_->getInitialVelocityCov();
 
+        XBias x_bias = ekf_.state_.getSubState<XBias>();
+        x_bias.mean = calibration_->getBiasInitial();
+        x_bias.cov = calibration_->getBiasInitialCov();
+
         ROS_INFO_STREAM("Initial position: \n " << calibration_->pos_initial_.mean << "\n with cov: \n" << calibration_->pos_initial_.cov);
         ROS_INFO_STREAM("Initial velocity: \n " << calibration_->vel_initial_.mean << "\n with cov: \n" << calibration_->vel_initial_.cov);
 
@@ -182,18 +255,75 @@ public:
         calibrated_ = true;
     }
 
-    void tickCallback(const ros::TimerEvent& evt)
+    void spin()
     {
-        publishMarker(ekf_.position(), ekf_.orientation());
+        ros::Rate process_rate(100.0);
+        while (ros::ok())
+        {
+            ros::spinOnce();
+
+            process();
+
+            publishState();
+            publishMarker();
+
+            process_rate.sleep();
+        }
+    }
+
+    void process()
+    {
+
+        vector<double> s_t(8, std::numeric_limits<double>::infinity());
+
+        // Order:
+        // &accel_gravity_, &magneto_, &position_, &velocity_, 
+        // &sonar_, &altimeter_, &orientation_, &bias_
+        if (accel_gravity_.new_data) s_t[0] = accel_gravity_.stamp.toSec();
+        if (magneto_.new_data) s_t[1] = magneto_.stamp.toSec();
+        if (position_.new_data) s_t[2] = position_.stamp.toSec();
+        if (velocity_.new_data) s_t[3] = velocity_.stamp.toSec();
+        if (sonar_.new_data) s_t[4] = sonar_.stamp.toSec();
+        if (altimeter_.new_data) s_t[5] = altimeter_.stamp.toSec();
+        if (orientation_.new_data) s_t[6] = orientation_.stamp.toSec();
+        if (bias_.new_data) s_t[7] = bias_.stamp.toSec();
+
+        // forward EKF
+        if (!ekf_.step(input))
+        {
+            ROS_INFO("skipping step");
+            return ;
+        }
+
+        // get oldest data first
+        int cur = distance(s_t.begin(), min_element(s_t.begin(), s_t.end()));
+
+        while (s_t[cur] != std::numeric_limits<double>::infinity())
+        {
+            // correct ekf
+            switch (cur)
+            {
+                case 0: ekf_.correct(accel_gravity_); break ; 
+                case 1: ekf_.correct(magneto_); break ; 
+                case 2: ekf_.correct(position_); break ; 
+                case 3: ekf_.correct(velocity_); break ; 
+                case 4: ekf_.correct(sonar_); break ; 
+                case 5: ekf_.correct(altimeter_); break ; 
+                case 6: ekf_.correct(orientation_); break ; 
+                case 7: ekf_.correct(bias_); break ; 
+            }
+
+            // remove from data list
+            s_t[cur] = std::numeric_limits<double>::infinity();
+
+            // get next sensor reading
+            cur = distance(s_t.begin(), min_element(s_t.begin(), s_t.end()));
+        }
+
     }
 
     void imuCallback(const sensor_msgs::Imu& msg)
     {
-        if (!isCalibrated())
-        {
-            return ;
-        }
-
         // Get sensor data
         Vec3 linear_acceleration = Vec3(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
         Vec3 angular_velocity = Vec3(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
@@ -211,20 +341,17 @@ public:
         input.mean.segment<3>(3) = angular_velocity;
         input.cov.block<3,3>(3,3) = angular_velocity_cov;
 
-        // Correct gravity every 6th step
-        if (imu_counter_ % 6 == 0)
+        // Correct gravity every 5th step
+        if (++imu_counter_ % 5 == 0)
         {
-            accel_gravity_.set(
+            accel_gravity_.update(
                 linear_acceleration,
-                2.0 * linear_acceleration_cov,
+                4.0 * linear_acceleration_cov,
                 msg.header.stamp);
-
-            ekf_.correct(accel_gravity_);
         }
-        
-        ekf_.step(input);
 
-        imu_counter_ += 1;
+        // Vec<4> imu_quat(msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w); // x y z w
+        // orientation_.update(imu_quat, Mat<4,4>::Identity() * 0.005, msg.header.stamp);
     }
 
     void imuBiasCallback(const sensor_msgs::Imu& msg)
@@ -234,19 +361,32 @@ public:
 
         accel_gravity_.bias = accel_bias_;
 
-        bias_.mean.segment<3>(0) = accel_bias_;
-        bias_.cov.block<3,3>(0,0) = 0.10 * I3;
+        Vec<6> b;
+        Mat<6,6> bcov;
+        bcov.setZero();
 
-        bias_.mean.segment<3>(3) = gyro_bias_;
-        bias_.cov.block<3,3>(3,3) = 0.01 * I3;
+        b.segment<3>(0) = accel_bias_;
+        bcov.block<3,3>(0,0) = 0.20 * I3;
 
-        ekf_.correct(bias_);
+        b.segment<3>(3) = gyro_bias_;
+        bcov.block<3,3>(3,3) = 0.05 * I3;
+
+        if (!isCalibrated())
+        {
+            calibration_->bias_.push_back(b);
+            return ;
+        }
+
+        if (++bias_counter_ % 10 == 0)
+        {
+            bias_.update(b, bcov, msg.header.stamp);
+        }
     }
 
     void magnetometerCallback(const geometry_msgs::Vector3Stamped& msg)
     {
         Vec3 field(msg.vector.x, msg.vector.y, msg.vector.z);
-        Mat33 field_cov = 0.05 * I3;
+        Mat33 field_cov = 0.005 * I3;
 
         if (!isCalibrated())
         {
@@ -254,8 +394,7 @@ public:
             return ;
         }
 
-        magneto_.set(field, field_cov, msg.header.stamp);
-        ekf_.correct(magneto_);
+        magneto_.update(field, field_cov, msg.header.stamp);
     }
 
     void positionCallback(const sensor_msgs::NavSatFix& msg)
@@ -276,14 +415,13 @@ public:
 
         Mat33 xyz_cov = 0.04 * I3;
 
-        position_.set(xyz, xyz_cov, msg.header.stamp);
-        ekf_.correct(position_);
+        position_.update(xyz, xyz_cov, msg.header.stamp);
     }
 
     void velocityCallback(const geometry_msgs::Vector3Stamped& msg)
     {
         Vec3 vel(msg.vector.x, msg.vector.y, msg.vector.z);
-        Mat33 vel_cov = 0.02 * I3;
+        Mat33 vel_cov = 0.05 * I3;
 
         if (!isCalibrated())
         {
@@ -291,8 +429,7 @@ public:
             return ;
         }
 
-        velocity_.set(vel, vel_cov, msg.header.stamp);
-        ekf_.correct(velocity_);
+        velocity_.update(vel, vel_cov, msg.header.stamp);
     }
 
     void sonarCallback(const sensor_msgs::Range &msg)
@@ -312,8 +449,7 @@ public:
             return ;
         }
 
-        sonar_.set(Vec1(range), Vec1(range_cov), msg.header.stamp);
-        ekf_.correct(sonar_);
+        sonar_.update(Vec1(range), Vec1(range_cov), msg.header.stamp);
     }
 
     void altimeterCallback(const hector_uav_msgs::Altimeter &msg)
@@ -328,8 +464,18 @@ public:
         }
 
         altitude -= calibration_->getAltimeterReference();
-        altimeter_.set(Vec1(altitude), Vec1(altitude_cov), msg.header.stamp);
-        ekf_.correct(altimeter_);
+        altimeter_.update(Vec1(altitude), Vec1(altitude_cov), msg.header.stamp);
+    }
+
+    void initialPoseCallback(const geometry_msgs::PoseStamped &msg)
+    {
+        if (!isCalibrated())
+        {
+            calibration_->start_pose_.push_back(Vec3(msg.pose.position.x, msg.pose.position.y, msg.pose.position.z));
+            return ;
+        }
+
+        sub_initial_pose_.shutdown();
     }
 
     bool isCalibrated() { return calibrated_; }
@@ -347,6 +493,7 @@ protected:
     VelocityMeasurement velocity_;
     SonarMeasurement sonar_;
     AltimeterMeasurement altimeter_;
+    OrientationMeasurement orientation_;
     BiasMeasurement bias_;
 
     /** Subscribers */
@@ -357,9 +504,11 @@ protected:
     ros::Subscriber sub_gps_vel_;
     ros::Subscriber sub_sonar_;
     ros::Subscriber sub_altimeter_;
+    ros::Subscriber sub_initial_pose_;
 
     /** Debug publishers */
     ros::Publisher pub_marker_;
+    ros::Publisher pub_state_;
 
     /** Misc */
     ros::NodeHandle nh_;
@@ -377,8 +526,11 @@ protected:
 
 private:
 
-    void publishMarker(Vec<3> pos, Quaternion estimate)
+    void publishMarker()
     {
+        const Vec3 pos = ekf_.position();
+        const Quaternion quat = ekf_.orientation();
+
         visualization_msgs::MarkerArray markers;
         visualization_msgs::Marker marker;
 
@@ -396,9 +548,9 @@ private:
         marker.color.a = 0.9f;
 
         vector<Quaternion> qs;
-        qs.push_back(estimate * Quaternion(1.0,0,0,0));                    // x
-        qs.push_back(estimate * Quaternion(1.0/M_SQRT2,0,0,1.0/M_SQRT2));  // y
-        qs.push_back(estimate * Quaternion(1.0/M_SQRT2,0,-1.0/M_SQRT2,0)); // z
+        qs.push_back(quat * Quaternion(1.0,0,0,0));                    // x
+        qs.push_back(quat * Quaternion(1.0/M_SQRT2,0,0,1.0/M_SQRT2));  // y
+        qs.push_back(quat * Quaternion(1.0/M_SQRT2,0,-1.0/M_SQRT2,0)); // z
 
         int id = 0;
         // add orientation arrows
@@ -449,6 +601,36 @@ private:
         pub_marker_.publish(markers);
     }
 
+    void publishState()
+    {
+        const Vec3 pos = ekf_.position();
+        const Mat33 pos_cov = ekf_.positionCov();
+        const Vec3 vel = ekf_.velocity();
+        const Quaternion quat = ekf_.orientation();
+
+        nav_msgs::Odometry odom;
+        odom.header.stamp = ros::Time::now();
+        odom.header.frame_id = "/drone_tf/world";
+
+        odom.pose.pose.position.x = pos.x();
+        odom.pose.pose.position.y = pos.y();
+        odom.pose.pose.position.z = pos.z();
+
+        Eigen::Map<Eigen::Matrix<double,6,6>> msg_cov(odom.pose.covariance.data());
+        msg_cov.block<3,3>(0,0) = pos_cov;
+
+        odom.pose.pose.orientation.x = quat.x();
+        odom.pose.pose.orientation.y = quat.y();
+        odom.pose.pose.orientation.z = quat.z();
+        odom.pose.pose.orientation.w = quat.w();
+
+        odom.twist.twist.linear.x = vel.x();
+        odom.twist.twist.linear.y = vel.y();
+        odom.twist.twist.linear.z = vel.z();
+
+        pub_state_.publish(odom);
+    }
+
 };
 
 
@@ -457,5 +639,5 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "sensor_fusion");
 
     SensorFusion node;
-    ros::spin();
+    node.spin();
 }

@@ -90,7 +90,7 @@ void System::predict(const Input &u, const double dt)
 
 /** ---- Accelerometer ---- */
 
-void AccelerometerGravityMeasurement::update()
+void AccelerometerGravityMeasurement::propagate()
 {
     XQuat quat = state->getSubState<XQuat>();
     Quaternion g_w(0.0, 0.0, 0.0, 1.0), b_w = getOrientation(quat); // body in world 
@@ -99,7 +99,7 @@ void AccelerometerGravityMeasurement::update()
     g_b = (b_w.inverse() * g_w * b_w).vec();
     dg_b = dqstarvq_q(b_w, g_w.vec());
 
-    Measurement::update();
+    Measurement::propagate();
 }
 
 void AccelerometerGravityMeasurement::transform()
@@ -143,7 +143,7 @@ void PositionMeasurement::predict()
     pred.mean<0, 3>() = pos.mean;
     pred.jacobi<0, 3, XPos>() = I3;
 
-    ROS_INFO_STREAM("measured pos :: \n" << measured.y);
+    // ROS_INFO_STREAM("measured pos :: \n" << measured.y);
 }
 
 /** ---- Velocity ---- */

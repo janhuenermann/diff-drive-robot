@@ -69,7 +69,7 @@ namespace ekf_model
             bias(AccelVec::Zero())
         {}
 
-        void update();
+        void propagate();
         void transform(); // z
         void predict(); // zhat
 
@@ -219,6 +219,9 @@ namespace ekf_model
 
         inline ekf::Quaternion getQuaternion() { return ekf::Quaternion(_quaternion.mean); }
         inline ekf::Vec<3> getPosition() { return _pos.mean; }
+        inline ekf::Mat<3,3> getPositionCovariance() { return _pos.cov; }
+
+        inline ekf::Vec<3> getVelocity() { return _vel.mean; }
 
     private:
 
@@ -248,6 +251,8 @@ namespace ekf_model
 
         inline ekf::Quaternion orientation() { return system_.getQuaternion(); };
         inline ekf::Vec<3> position() { return system_.getPosition(); }
+        inline ekf::Mat<3,3> positionCov() { return system_.getPositionCovariance(); }
+        inline ekf::Vec<3> velocity() { return system_.getVelocity(); }
 
     };
 
