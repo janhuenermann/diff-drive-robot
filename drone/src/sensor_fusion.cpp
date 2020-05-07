@@ -252,7 +252,9 @@ public:
 
         ROS_INFO("Calibration done.");
 
+        sum_accel_.setZero();
         calibrated_ = true;
+
     }
 
     void spin()
@@ -320,7 +322,11 @@ public:
             cur = distance(s_t.begin(), min_element(s_t.begin(), s_t.end()));
         }
 
+        ekf_.normalize();
+
     }
+
+    Vec3 sum_accel_;
 
     void imuCallback(const sensor_msgs::Imu& msg)
     {
@@ -328,7 +334,7 @@ public:
         Vec3 linear_acceleration = Vec3(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
         Vec3 angular_velocity = Vec3(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
         
-        Mat33 linear_acceleration_cov = I3 * 0.125;
+        Mat33 linear_acceleration_cov = I3 * 0.200;
         Mat33 angular_velocity_cov = I3 * 0.01;
 
         // Update input
@@ -341,17 +347,25 @@ public:
         input.mean.segment<3>(3) = angular_velocity;
         input.cov.block<3,3>(3,3) = angular_velocity_cov;
 
+        sum_accel_ += linear_acceleration;
+        ++imu_counter_;
+
         // Correct gravity every 5th step
-        if (++imu_counter_ % 5 == 0)
+        if (imu_counter_ % 5 == 0)
         {
             accel_gravity_.update(
-                linear_acceleration,
-                4.0 * linear_acceleration_cov,
+                sum_accel_ / (double)imu_counter_,
+                4.0 * I3,
                 msg.header.stamp);
+
+            sum_accel_.setZero();
+            imu_counter_ = 0;
+
+            // Vec<4> imu_quat(msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w); // x y z w
+            // orientation_.update(imu_quat, Mat<4,4>::Identity() * 0.100, msg.header.stamp);
         }
 
-        // Vec<4> imu_quat(msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w); // x y z w
-        // orientation_.update(imu_quat, Mat<4,4>::Identity() * 0.005, msg.header.stamp);
+
     }
 
     void imuBiasCallback(const sensor_msgs::Imu& msg)
@@ -377,10 +391,10 @@ public:
             return ;
         }
 
-        if (++bias_counter_ % 10 == 0)
-        {
-            bias_.update(b, bcov, msg.header.stamp);
-        }
+        // if (++bias_counter_ % 10 == 0)
+        // {
+        //     bias_.update(b, bcov, msg.header.stamp);
+        // }
     }
 
     void magnetometerCallback(const geometry_msgs::Vector3Stamped& msg)
@@ -416,6 +430,7 @@ public:
         Mat33 xyz_cov = 0.04 * I3;
 
         position_.update(xyz, xyz_cov, msg.header.stamp);
+        // ROS_INFO_STREAM("xyz :: \n" << xyz);
     }
 
     void velocityCallback(const geometry_msgs::Vector3Stamped& msg)
@@ -464,7 +479,7 @@ public:
         }
 
         altitude -= calibration_->getAltimeterReference();
-        altimeter_.update(Vec1(altitude), Vec1(altitude_cov), msg.header.stamp);
+        // altimeter_.update(Vec1(altitude), Vec1(altitude_cov), msg.header.stamp);
     }
 
     void initialPoseCallback(const geometry_msgs::PoseStamped &msg)

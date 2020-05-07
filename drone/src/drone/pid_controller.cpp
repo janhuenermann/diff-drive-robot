@@ -119,9 +119,9 @@ void PIDController::update(double &vel_x, double &vel_y,double &vel_z){
     tf::Quaternion q(drone_q.x, drone_q.y, drone_q.z,drone_q.w);
     tf::Quaternion p(vel_x_w,vel_y_w,vel_z_w,0);
     tf::Quaternion pd = q.inverse()*p*q;
-    vel_x = pd.getX();
-    vel_y = pd.getY();
-    vel_z = pd.getZ();
+    vel_x = vel_x_w; // pd.getX();
+    vel_y = vel_y_w; // pd.getY();
+    vel_z = vel_z_w; // pd.getZ();
 
     // Only use integrator close to steady state
     if(abs(e_x)>threshold_ss){

@@ -63,8 +63,8 @@ void System::predict(const Input &u, const double dt)
     pred.reset();
 
     // F(X, U)
-    pred.mean<XQuat>() = (_quaternion.mean + 0.5 * dt * qdot.coeffs()).normalized();
-    pred.mean<XPos>()  = _pos.mean + dt * _vel.mean + 0.5 * a_w * dtsq;
+    pred.mean<XQuat>() = _quaternion.mean + 0.5 * dt * qdot.coeffs();
+    pred.mean<XPos>()  = _pos.mean + dt * _vel.mean; // + 0.5 * a_w * dtsq;
     pred.mean<XVel>()  = _vel.mean + dt * a_w;
     pred.mean<XBiasAccel>() = _bias_accel.mean;
     pred.mean<XBiasGyro>()  = _bias_gyro.mean;
@@ -83,7 +83,7 @@ void System::predict(const Input &u, const double dt)
     pred.jacobi<XBiasGyro, XBiasGyro>() = I3;
 
     // DF(X, U)/DU
-    pred.inputJacobi<XPos, 0, 3>()  = 0.5 * dtsq * a_w_da;
+    // pred.inputJacobi<XPos, 0, 3>()  = 0.5 * dtsq * a_w_da;
     pred.inputJacobi<XVel, 0, 3>()  = dt * a_w_da;
     pred.inputJacobi<XQuat, 3, 3>() = 0.5 * dt * dqdot_dqw.block<4,3>(0,0);
 }

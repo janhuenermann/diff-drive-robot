@@ -7,6 +7,7 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
 #include <std_msgs/Bool.h>
 #include <hector_uav_msgs/EnableMotors.h>
 #include <nav_msgs/Odometry.h>
@@ -22,6 +23,7 @@ public:
         // 0: take off 1:to goal 2:to robot 3:to start 4:land 5:land softly 6:turn off motors
         mission_state = 0;
 
+        // ros::Duration(10.0).sleep();
         ros::NodeHandle nh;
         // Start motors
         motor_client = nh.serviceClient<hector_uav_msgs::EnableMotors>("enable_motors");
@@ -43,7 +45,7 @@ public:
         // Initialize and subscribe topics
         pub_cmd_vel = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
         pub_goal = nh.advertise<geometry_msgs::Pose2D>("navigation/drone_goal",1);
-        pub_intersection = nh.advertise<geometry_msgs::Pose2D>("navigation/intersection",1);
+        pub_goal_pose = nh.advertise<geometry_msgs::PointStamped>("navigation/drone_goal_pose",1);
 
         sub_drone_pos = nh.subscribe<nav_msgs::Odometry>("state", 1, &ControllerNode::dronePoseCallback, this);
         sub_sonar = nh.subscribe<sensor_msgs::Range>("sonar_height",1,&ControllerNode::sonarCallback, this);
@@ -90,7 +92,6 @@ public:
 
     geometry_msgs::Point calculateNewIntersection()
     {
-        ROS_INFO("Calculating interesection point.");
         assert(received_drone_pos);
 
         // Calculate the point, where drone and turtle take the same amout to reach
@@ -138,8 +139,6 @@ public:
     {
         // Read drone pose and give to PID controler
         drone_pos = msg->pose.pose;
-
-        ROS_INFO("Received drone odom.");
 
         if(!received_drone_pos)
         {
@@ -241,6 +240,7 @@ public:
                 }
             }
         }
+
         pid.set_phase(mission_state);
 
 // calculate new velocity commands and publish
@@ -258,13 +258,21 @@ public:
         p.x = goal_pos.x;
         p.y = goal_pos.y;
         pub_goal.publish(p);
+
+        geometry_msgs::PointStamped p3;
+        p3.point.x = goal_pos.x;
+        p3.point.y = goal_pos.y;
+        p3.point.z = cruise_height;
+        p3.header.stamp = ros::Time::now();
+        p3.header.frame_id = "/drone_tf/world";
+        pub_goal_pose.publish(p3);
     }
 
 protected:
 // Constants
     const double freq = 50.0;
 
-    const double yaw_speed = 36.0/180*M_PI;
+    const double yaw_speed = 0.0; // 36.0/180*M_PI;
     const double thresh_dist = 0.2;
     const double cruise_height = 5.5;
 
@@ -303,7 +311,11 @@ protected:
 
     ros::Publisher pub_cmd_vel;
     ros::Publisher pub_goal;
+        ros::Publisher pub_goal_pose;
+
     ros::Publisher pub_intersection;
+        ros::Publisher pub_intersection_pose;
+
     ros::Subscriber sub_drone_pos;
     ros::Subscriber sub_navigation_state;
     ros::Subscriber sub_ground_goal;

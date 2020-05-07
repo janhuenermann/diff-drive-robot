@@ -73,8 +73,6 @@ namespace ekf_model
         void transform(); // z
         void predict(); // zhat
 
-        void applied() { state->getSubState<XQuat>().mean.normalize(); }
-
         AccelVec bias;
 
     private:
@@ -93,7 +91,6 @@ namespace ekf_model
         using Measurement::predicted;
 
         void predict(); // zhat
-        void applied() { state->getSubState<XQuat>().mean.normalize(); }
 
         void setReference(Vec<3> ref, Mat<3,3> cov) 
         {
@@ -223,6 +220,8 @@ namespace ekf_model
 
         inline ekf::Vec<3> getVelocity() { return _vel.mean; }
 
+        inline void normalize() { _quaternion.mean.normalize(); }
+
     private:
 
         XQuat _quaternion;
@@ -253,6 +252,8 @@ namespace ekf_model
         inline ekf::Vec<3> position() { return system_.getPosition(); }
         inline ekf::Mat<3,3> positionCov() { return system_.getPositionCovariance(); }
         inline ekf::Vec<3> velocity() { return system_.getVelocity(); }
+
+        inline void normalize() { system_.normalize(); }
 
     };
 

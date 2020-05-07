@@ -10,6 +10,7 @@ Panels:
         - /Odometry1
         - /Odometry1/Shape1
         - /Odometry2
+        - /PointStamped1
       Splitter Ratio: 0.5
     Tree Height: 551
   - Class: rviz/Selection
@@ -132,6 +133,16 @@ Visualization Manager:
       Topic: /drone/state
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Class: rviz/PointStamped
+      Color: 204; 41; 204
+      Enabled: true
+      History Length: 1
+      Name: PointStamped
+      Radius: 0.20000000298023224
+      Topic: /drone/navigation/drone_goal_pose
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -160,7 +171,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 38.95975875854492
+      Distance: 25.790851593017578
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -175,10 +186,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9303974509239197
+      Pitch: 0.8853974342346191
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.3953992128372192
+      Yaw: 4.240396976470947
     Saved: ~
 Window Geometry:
   Displays:
