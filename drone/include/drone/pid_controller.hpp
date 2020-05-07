@@ -27,19 +27,17 @@ public:
     void publish_int(double ix, double iy, double iz);
 
 protected:
-    const double Kp_xy = 0.8, Ki_xy = 0.0, Kd_xy = 0.0;
-
     // Flight to stationary target
-    const double kp_xy = Kp_xy, ki_xy = Ki_xy, kd_xy = Kd_xy;
+    const double kp_xy = 0.8, ki_xy = 0, kd_xy = 0.06;
     const double kp_z = 3, ki_z = 0.7, kd_z = 0;
     // Flight to TURTLE
-    const double tp_xy = Kp_xy, ti_xy = Ki_xy, td_xy = Kd_xy;
+    const double tp_xy = 1.5, ti_xy = 0.15, td_xy = 0.09;
     const double tp_z = 3, ti_z = 0.7, td_z = 0;
     // Start and landing
-    const double lp_xy = Kp_xy, li_xy = Ki_xy, ld_xy = Kd_xy;
+    const double lp_xy = 1, li_xy = 0.7, ld_xy = 0;
     const double lp_z = 5, li_z = 0, ld_z = 0.2;
     // final landing
-    const double lap_xy = Kp_xy, lai_xy = Ki_xy, lad_xy = Kd_xy;
+    const double lap_xy = 1, lai_xy = 0.7, lad_xy = 0;
     const double lap_z = 0.2, lai_z = 0.05, lad_z = 0;
 
     // max params

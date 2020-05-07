@@ -28,7 +28,7 @@ public:
         // Start motors
         motor_client = nh.serviceClient<hector_uav_msgs::EnableMotors>("enable_motors");
         srv.request.enable = true;
-        
+
         bool armed = false;
         do {
             armed = motor_client.call(srv);
@@ -47,7 +47,7 @@ public:
         pub_goal = nh.advertise<geometry_msgs::Pose2D>("navigation/drone_goal",1);
         pub_goal_pose = nh.advertise<geometry_msgs::PointStamped>("navigation/drone_goal_pose",1);
 
-        sub_drone_pos = nh.subscribe<nav_msgs::Odometry>("state", 1, &ControllerNode::dronePoseCallback, this);
+        sub_drone_pos = nh.subscribe<nav_msgs::Odometry>("ground_truth/state", 1, &ControllerNode::dronePoseCallback, this);
         sub_sonar = nh.subscribe<sensor_msgs::Range>("sonar_height",1,&ControllerNode::sonarCallback, this);
 
         sub_navigation_state = nh.subscribe<std_msgs::Bool>("/ground/navigation/done",1, &ControllerNode::navDoneCallback, this);
@@ -272,7 +272,7 @@ protected:
 // Constants
     const double freq = 50.0;
 
-    const double yaw_speed = 0.0; // 36.0/180*M_PI;
+    const double yaw_speed = 36.0/180*M_PI;
     const double thresh_dist = 0.2;
     const double cruise_height = 5.5;
 
