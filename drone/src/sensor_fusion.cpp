@@ -469,7 +469,7 @@ public:
 
     void altimeterCallback(const hector_uav_msgs::Altimeter &msg)
     {
-        const double altitude_cov = 0.15;
+        const double altitude_cov = 5.0;
         double altitude = (double)msg.altitude;
 
         if (!isCalibrated())
@@ -479,7 +479,7 @@ public:
         }
 
         altitude -= calibration_->getAltimeterReference();
-        // altimeter_.update(Vec1(altitude), Vec1(altitude_cov), msg.header.stamp);
+        altimeter_.update(Vec1(altitude), Vec1(altitude_cov), msg.header.stamp);
     }
 
     void initialPoseCallback(const geometry_msgs::PoseStamped &msg)
