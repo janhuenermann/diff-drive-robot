@@ -144,7 +144,7 @@ public:
         ekf_.use(orientation_);
         ekf_.use(bias_);
 
-        ros::Duration(4.0).sleep(); // weired imu values at start
+        ros::Duration(2.0).sleep(); // weired imu values at start
 
         sub_imu_ = nh_.subscribe("raw_imu", 1, &SensorFusion::imuCallback,this);
         sub_imu_bias_ = nh_.subscribe("raw_imu/bias", 1, &SensorFusion::imuBiasCallback,this);

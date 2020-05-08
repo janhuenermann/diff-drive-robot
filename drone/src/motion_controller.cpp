@@ -23,7 +23,7 @@ public:
         // 0: take off 1:to goal 2:to robot 3:to start 4:land 5:land softly 6:turn off motors
         mission_state = 0;
 
-        // ros::Duration(10.0).sleep();
+        ros::Duration(8.0).sleep();
         ros::NodeHandle nh;
         // Start motors
         motor_client = nh.serviceClient<hector_uav_msgs::EnableMotors>("enable_motors");
