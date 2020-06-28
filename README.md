@@ -1,17 +1,24 @@
-## Robot Project
-NUS, EE4308
+## Robotics Project
+NUS, EE4308, AY19/20, Semester 2
 
-This is the code for the robotics project of EE4308, 2019/20 Semester 2. The goal of the project was
-to build a robot that is able to navigate an unknown environment on its own. In order to
-successfully accomplish that, we implemented
+Authors: Marc Rauch\*, Jan Hünermann\*
+
+This is the code for the robotics project of EE4308 at NUS. The goal of the project was
+having the robot navigate an unknown environment on its own. For that, we implemented
 
 - an odometry motion model
 - binary log-odds model for LiDAR based mapping
-- Theta-\* global path planner
+- Theta-Star global path planner
 - Spline based local planner with pure pursuit
 - PID controller
 
-All this stuff was implemented from scratch with ROS and Gazebo, only dependencies being OpenCV and Eigen3.
+All of this was implemented from scratch with ROS and Gazebo, only dependencies being OpenCV and
+Eigen3. The success of the project was proved in a final demonstration.
+
+Furthermore, in the second part of the project we implemented an extended Kalman filter for controlling a drone that is
+able to fly between the target and robot position.
+
+\*: Equal contribution
 
 ### Install
 Make sure you have the following requirements met:
