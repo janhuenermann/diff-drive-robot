@@ -1,6 +1,18 @@
 ## Robot Project
 NUS, EE4308
 
+This is the code for the robotics project of EE4308, 2019/20 Semester 2. The goal of the project was
+to build a robot that is able to navigate an unknown environment on its own. In order to
+successfully accomplish that, we implemented
+
+- an odometry motion model
+- binary log-odds model for LiDAR based mapping
+- Theta-\* global path planner
+- Spline based local planner with pure pursuit
+- PID controller
+
+All this stuff was implemented from scratch with ROS and Gazebo, only dependencies being OpenCV and Eigen3.
+
 ### Install
 Make sure you have the following requirements met:
 - ROS Melodic
@@ -32,16 +44,17 @@ to start the mission.
 - [x] Trajectory generation and following
 
 #### Part 2
-- [ ] Sensor fusion
-- [ ] Extend mission planner
-- [ ] Motion control (easy)
-- [ ] Modify launch structure
-- [ ] Fine-tune ground robot
+- [x] Sensor fusion
+- [x] Extend mission planner
+- [x] Motion control (easy)
+- [x] Modify launch structure
+- [x] Fine-tune ground robot
 
 ### Topics
 - `/robot_pose`: geometry\_msgs/Pose2D
 - `/map`: nav\_msgs/OccupancyGrid
 - `/navigation/goal`: geometry\_msgs/Pose2D
 - `/navigation/path`: nav\_msgs/Path, global coordinates
+- etc
 
 <img src="architecture.png" alt="Architecture overview" width="660px" />
