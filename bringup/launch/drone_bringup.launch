@@ -18,7 +18,7 @@
         <include file="$(find hector_quadrotor_gazebo)/launch/spawn_quadrotor.launch">
             <arg name="name" value="uav" />
             <arg name="tf_prefix" value="drone_tf" />
-            <arg name="y" value="5.0" />
+            <arg name="y" value="7.0" />
         </include>
     </group>
 
