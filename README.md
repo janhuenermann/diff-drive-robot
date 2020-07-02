@@ -12,9 +12,6 @@ having the robot navigate an unknown environment on its own. For that, we implem
 - Spline based local planner with pure pursuit
 - PID controller
 
-All of this was implemented from scratch with ROS and Gazebo, only dependencies being OpenCV and
-Eigen3. The success of the project was proved in a final demonstration.
-
 Furthermore, in the second part of the project we implemented an extended Kalman filter for controlling a drone that is
 able to fly between the target and robot position.
 
