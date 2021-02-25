@@ -7,7 +7,7 @@ This is the code for the robotics project of EE4308 at NUS. The goal of the proj
 having the robot navigate an unknown environment on its own. For that, we implemented
 
 - an odometry motion model
-- binary log-odds model for LiDAR based mapping
+- binary log-odds model for lidar based mapping
 - Theta-Star global path planner
 - Spline based local planner with pure pursuit
 - PID controller
